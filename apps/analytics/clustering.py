@@ -160,10 +160,10 @@ class TopicClusteringService:
         text = re.sub(r'^question\s*\d+\s*[:\.\)]*\s*', '', text, flags=re.IGNORECASE)
         text = re.sub(r'^part\s*[ab]\s*[:\.\)]*\s*', '', text, flags=re.IGNORECASE)
         
-        # Remove trivial words
+        # Remove trivial words (but keep longer words even if in trivial list)
         trivial = ['the', 'a', 'an', 'and', 'or', 'but', 'with', 'for', 'to', 'of', 'in', 'on', 'at']
         words = text.split()
-        words = [w for w in words if w not in trivial or len(w) > 3]
+        words = [w for w in words if len(w) > 3 or w not in trivial]
         
         # Remove extra whitespace
         text = ' '.join(words)

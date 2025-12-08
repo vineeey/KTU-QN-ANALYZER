@@ -119,9 +119,15 @@
                         <small style="color: #7f8c8d;">Years: {{ item.years }}</small>
                     </td>
                     <td style="border: 1px solid #ddd; padding: 10px; text-align: center;">
-                        <span class="priority-tier-{{ item.tier|lower|cut:' '|cut:'priority' }}">
-                            {{ item.frequency }}
-                        </span>
+                        {% if item.tier == 'Top Priority' %}
+                        <span class="priority-tier-1">{{ item.frequency }}</span>
+                        {% elif item.tier == 'High Priority' %}
+                        <span class="priority-tier-2">{{ item.frequency }}</span>
+                        {% elif item.tier == 'Medium Priority' %}
+                        <span class="priority-tier-3">{{ item.frequency }}</span>
+                        {% else %}
+                        <span class="priority-tier-4">{{ item.frequency }}</span>
+                        {% endif %}
                     </td>
                     <td style="border: 1px solid #ddd; padding: 10px; text-align: center;">{{ item.total_marks }}</td>
                 </tr>

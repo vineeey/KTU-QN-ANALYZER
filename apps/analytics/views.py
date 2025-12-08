@@ -79,10 +79,19 @@ class ModuleAnalyticsView(LoginRequiredMixin, TemplateView):
             module=module
         ).order_by('-frequency_count')
         
+        # Count topics by tier
+        tier_counts = {
+            'tier_1': topics.filter(priority_tier=TopicCluster.PriorityTier.TIER_1).count(),
+            'tier_2': topics.filter(priority_tier=TopicCluster.PriorityTier.TIER_2).count(),
+            'tier_3': topics.filter(priority_tier=TopicCluster.PriorityTier.TIER_3).count(),
+            'tier_4': topics.filter(priority_tier=TopicCluster.PriorityTier.TIER_4).count(),
+        }
+        
         context['subject'] = subject
         context['module'] = module
         context['stats'] = module_stats
         context['topics'] = topics
+        context['tier_counts'] = tier_counts
         
         return context
 
