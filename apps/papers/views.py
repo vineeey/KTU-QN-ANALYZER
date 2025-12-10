@@ -11,52 +11,62 @@ from .models import Paper
 from .forms import PaperUploadForm, BatchPaperUploadForm
 
 
-class GenericPaperUploadView(LoginRequiredMixin, FormView):
-    """Upload papers without requiring a pre-existing subject."""
+class GenericPaperUploadView(FormView):
+    """Upload papers without requiring authentication - PUBLIC ACCESS."""
     
     form_class = BatchPaperUploadForm
-    template_name = 'papers/paper_upload_generic.html'
+    template_name = 'papers/paper_upload_new.html'  # New enhanced template
     
-    def get_or_create_subject(self, name, code, university):
-        """Get or create a subject with modules for the user."""
+    def get_or_create_subject(self, name, code, university, university_type, syllabus_file=None):
+        """Get or create a subject with modules for public or authenticated user."""
         from apps.subjects.models import Module
         
         # Use provided name/code or defaults
         subject_name = name or 'My Question Papers'
         subject_code = code or 'DEFAULT'
         
-        subject, created = Subject.objects.get_or_create(
-            user=self.request.user,
+        # For authenticated users, associate with user
+        user = self.request.user if self.request.user.is_authenticated else None
+        
+        # Create new subject for each upload session (public mode)
+        subject = Subject.objects.create(
+            user=user,  # Can be None for public access
             name=subject_name,
-            defaults={
-                'code': subject_code,
-                'description': f'Question papers for {subject_name}',
-                'university': university or 'KTU',
-            }
+            code=subject_code,
+            description=f'Question papers for {subject_name}',
+            university=university or 'Unknown',
+            university_type=university_type or 'OTHER'
         )
         
-        # Update university if provided
-        if university and subject.university != university:
-            subject.university = university
+        # Handle syllabus upload
+        if syllabus_file:
+            subject.syllabus_file = syllabus_file
+            # Extract syllabus text (basic extraction)
+            try:
+                import pdfplumber
+                with pdfplumber.open(syllabus_file) as pdf:
+                    syllabus_text = '\n'.join([page.extract_text() or '' for page in pdf.pages])
+                subject.syllabus_text = syllabus_text
+            except:
+                pass
             subject.save()
         
-        # Create 5 modules if they don't exist (for KTU)
-        if subject.modules.count() == 0:
-            module_names = [
-                'Module 1',
-                'Module 2', 
-                'Module 3',
-                'Module 4',
-                'Module 5'
-            ]
-            for i, mod_name in enumerate(module_names, 1):
-                Module.objects.create(
-                    subject=subject,
-                    name=mod_name,
-                    number=i,
-                    description=f'Module {i} of {subject_name}',
-                    weightage=20  # Equal weightage
-                )
+        # Create 5 modules by default
+        module_names = [
+            'Module 1',
+            'Module 2', 
+            'Module 3',
+            'Module 4',
+            'Module 5'
+        ]
+        for i, mod_name in enumerate(module_names, 1):
+            Module.objects.create(
+                subject=subject,
+                name=mod_name,
+                number=i,
+                description=f'Module {i} of {subject_name}',
+                weightage=20  # Equal weightage
+            )
         
         self._subject = subject
         return subject
@@ -68,11 +78,13 @@ class GenericPaperUploadView(LoginRequiredMixin, FormView):
         return reverse_lazy('subjects:list')
     
     def post(self, request, *args, **kwargs):
-        """Handle file upload."""
+        """Handle file upload with university type and syllabus."""
         files = request.FILES.getlist('files')
-        university = request.POST.get('university', 'KTU')
+        university_type = request.POST.get('university_type', 'KTU')  # KTU or OTHER
+        university_name = request.POST.get('university_name', '').strip()
         subject_name = request.POST.get('subject_name', '').strip()
         subject_code = request.POST.get('subject_code', '').strip()
+        syllabus_file = request.FILES.get('syllabus_file')
         
         if not files:
             messages.error(request, 'Please select at least one PDF file.')
@@ -87,8 +99,18 @@ class GenericPaperUploadView(LoginRequiredMixin, FormView):
                 messages.error(request, f'"{f.name}" exceeds 50MB limit.')
                 return self.get(request, *args, **kwargs)
         
+        # Set default university name if not provided
+        if not university_name:
+            university_name = 'KTU' if university_type == 'KTU' else 'Other University'
+        
         # Get or create subject with modules
-        subject = self.get_or_create_subject(subject_name, subject_code, university)
+        subject = self.get_or_create_subject(
+            subject_name, 
+            subject_code, 
+            university_name,
+            university_type,
+            syllabus_file
+        )
         
         # Process files
         uploaded_count = 0
