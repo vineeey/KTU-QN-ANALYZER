@@ -23,16 +23,17 @@ class TopicClusteringService:
     def __init__(
         self,
         subject: Subject,
-        similarity_threshold: float = 0.75,
-        tier_1_threshold: int = 4,
+        similarity_threshold: float = 0.3,
+        tier_1_threshold: int = 5,
         tier_2_threshold: int = 3,
         tier_3_threshold: int = 2
     ):
         self.subject = subject
         self.similarity_threshold = similarity_threshold
-        self.tier_1_threshold = tier_1_threshold
-        self.tier_2_threshold = tier_2_threshold
-        self.tier_3_threshold = tier_3_threshold
+        self.tier_1_threshold = tier_1_threshold  # Top Priority: 5+ times
+        self.tier_2_threshold = tier_2_threshold  # High Priority: 3-4 times
+        self.tier_3_threshold = tier_3_threshold  # Medium Priority: 2 times
+        # Low Priority: 1 time (implicit)
     
     def analyze_subject(self) -> Dict[str, Any]:
         """

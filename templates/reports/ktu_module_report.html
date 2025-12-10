@@ -1,0 +1,144 @@
+<!-- Module Title -->
+<h1>Module {{ module.number }} – {{ subject.name }} (KTU {{ scheme_year }} Scheme)</h1>
+    
+    <!-- PART A Section -->
+    <h2>PART A (3 Marks each)</h2>
+    <p class="subtitle">(Qn {{ part_a_qn_start }} & {{ part_a_qn_end }} from all papers belong to Module {{ module.number }})</p>
+    
+    {% if part_a_by_year %}
+        {% for year_group in part_a_by_year %}
+        <h3 class="year-heading">{{ year_group.year }}</h3>
+        {% for q in year_group.questions %}
+        <div class="question-item">
+            • {{ q.text }} <span class="marks-tag">— ({{ q.year_short }}, {{ q.marks }} marks)</span>
+        </div>
+        {% endfor %}
+        {% endfor %}
+    {% else %}
+        <p><em>No Part A questions found for this module.</em></p>
+    {% endif %}
+    
+    <!-- PART B Section -->
+    <h2>PART B (14 Marks each)</h2>
+    <p class="subtitle">(Qn {{ part_b_qn_start }} & {{ part_b_qn_end }} belong to Module {{ module.number }})</p>
+    
+    {% if part_b_by_year %}
+        {% for year_group in part_b_by_year %}
+        <h3 class="year-heading">{{ year_group.year }}</h3>
+        {% for qn in year_group.questions %}
+        <div class="qn-number">Qn {{ qn.number }}</div>
+        {% for part in qn.parts %}
+        <div class="question-item">
+            {{ part.text }} <span class="marks-tag">— ({{ part.year_short }}, {{ part.marks }} marks)</span>
+        </div>
+        {% endfor %}
+        {% endfor %}
+        {% endfor %}
+    {% else %}
+        <p><em>No Part B questions found for this module.</em></p>
+    {% endif %}
+    
+    <!-- Repeated Question Analysis -->
+    <div class="priority-section">
+        <h2 class="priority-heading">✅ Module {{ module.number }} – Repeated Questions<br>(Prioritized List)</h2>
+        <p style="text-align: center; color: #666;">(Highest repeated = highest priority)</p>
+        
+        {% if priority_analysis.top %}
+        <div class="tier-heading tier-top">TOP PRIORITY — Repeated 5+ Times</div>
+        {% for item in priority_analysis.top %}
+        <div class="topic-item">
+            <span class="topic-name">{{ item.rank }}. {{ item.topic }}</span><br>
+            <span class="topic-years">Appears in: {{ item.years }}</span>
+            {% if item.description %}
+            <div class="topic-desc">• "{{ item.description }}"</div>
+            {% endif %}
+        </div>
+        {% endfor %}
+        {% endif %}
+        
+        {% if priority_analysis.high %}
+        <div class="tier-heading tier-high">HIGH PRIORITY — Repeated 3-4 Times</div>
+        {% for item in priority_analysis.high %}
+        <div class="topic-item">
+            <span class="topic-name">{{ item.rank }}. {{ item.topic }}</span><br>
+            <span class="topic-years">Appears in: {{ item.years }}</span>
+            {% if item.description %}
+            <div class="topic-desc">• "{{ item.description }}"</div>
+            {% endif %}
+        </div>
+        {% endfor %}
+        {% endif %}
+        
+        {% if priority_analysis.medium %}
+        <div class="tier-heading tier-medium">MEDIUM PRIORITY — Repeated 2 Times</div>
+        {% for item in priority_analysis.medium %}
+        <div class="topic-item">
+            <span class="topic-name">{{ item.rank }}. {{ item.topic }}</span><br>
+            <span class="topic-years">Appears in: {{ item.years }}</span>
+            {% if item.description %}
+            <div class="topic-desc">• "{{ item.description }}"</div>
+            {% endif %}
+        </div>
+        {% endfor %}
+        {% endif %}
+        
+        {% if priority_analysis.low %}
+        <div class="tier-heading tier-low">LOW PRIORITY — Appears Only Once</div>
+        {% for item in priority_analysis.low %}
+        <div class="topic-item">
+            <span class="topic-name">{{ item.rank }}. {{ item.topic }}</span><br>
+            <span class="topic-years">Appears in: {{ item.years }}</span>
+        </div>
+        {% endfor %}
+        {% endif %}
+    </div>
+    
+    <!-- Final Study Priority Order -->
+    <div class="study-order">
+        <h2>FINAL PRIORITIZED STUDY ORDER</h2>
+        <p><em>If you want to score high, study in THIS order:</em></p>
+        
+        {% if study_order.tier_1 %}
+        <div class="study-tier">
+            <div class="study-tier-title">Tier 1 (Most repeated — must learn first)</div>
+            <ul>
+            {% for item in study_order.tier_1 %}
+                <li>{{ item.topic }}</li>
+            {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+        
+        {% if study_order.tier_2 %}
+        <div class="study-tier">
+            <div class="study-tier-title">Tier 2 (Frequently repeated)</div>
+            <ul>
+            {% for item in study_order.tier_2 %}
+                <li>{{ item.topic }}</li>
+            {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+        
+        {% if study_order.tier_3 %}
+        <div class="study-tier">
+            <div class="study-tier-title">Tier 3 (Moderately repeated)</div>
+            <ul>
+            {% for item in study_order.tier_3 %}
+                <li>{{ item.topic }}</li>
+            {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+        
+        {% if study_order.tier_4 %}
+        <div class="study-tier">
+            <div class="study-tier-title">Tier 4 (One-time but possible)</div>
+            <ul>
+            {% for item in study_order.tier_4 %}
+                <li>{{ item.topic }}</li>
+            {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+    </div>

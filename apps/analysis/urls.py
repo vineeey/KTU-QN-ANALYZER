@@ -7,4 +7,6 @@ app_name = 'analysis'
 urlpatterns = [
     path('job/<uuid:pk>/', views.AnalysisDetailView.as_view(), name='detail'),
     path('job/<uuid:pk>/status/', views.AnalysisStatusView.as_view(), name='status'),
+    path('subject/<uuid:subject_pk>/analyze/', views.ManualAnalyzeView.as_view(), name='manual_analyze'),
+    path('subject/<uuid:subject_pk>/reset/', views.ResetAndAnalyzeView.as_view(), name='reset_analyze'),
 ]

@@ -17,6 +17,7 @@ class AnalyticsDashboardView(LoginRequiredMixin, TemplateView):
     template_name = 'analytics/dashboard.html'
     
     def get_context_data(self, **kwargs):
+        import json
         context = super().get_context_data(**kwargs)
         subject = get_object_or_404(
             Subject, pk=self.kwargs['subject_pk'], user=self.request.user
@@ -31,6 +32,9 @@ class AnalyticsDashboardView(LoginRequiredMixin, TemplateView):
         # Get all modules with their topic counts
         modules = subject.modules.all()
         module_data = []
+        module_labels = []
+        module_counts = []
+        
         for module in modules:
             topic_count = TopicCluster.objects.filter(
                 subject=subject,
@@ -42,17 +46,82 @@ class AnalyticsDashboardView(LoginRequiredMixin, TemplateView):
                 priority_tier=TopicCluster.PriorityTier.TIER_1
             ).count()
             
+            # Count questions in this module
+            question_count = module.questions.count()
+            module_labels.append(f'Module {module.number}')
+            module_counts.append(question_count)
+            
             module_data.append({
                 'module': module,
                 'topic_count': topic_count,
                 'critical_topics': tier_1_count,
-                'top_topics': top_topics.get(module.number, [])
+                'top_topics': top_topics.get(module.number, []),
+                'question_count': question_count,
             })
         
+        # Prepare chart data as JSON for JavaScript
+        context['module_labels'] = json.dumps(module_labels)
+        context['module_data'] = json.dumps(module_counts)
+        
+        # Bloom's taxonomy data
+        bloom_dist = stats['bloom_distribution']
+        bloom_data = [
+            bloom_dist.get('remember', 0),
+            bloom_dist.get('understand', 0),
+            bloom_dist.get('apply', 0),
+            bloom_dist.get('analyze', 0),
+            bloom_dist.get('evaluate', 0),
+            bloom_dist.get('create', 0),
+        ]
+        context['bloom_data'] = json.dumps(bloom_data)
+        
+        # Difficulty data
+        diff_dist = stats['difficulty_distribution']
+        difficulty_data = [
+            diff_dist.get('easy', 0),
+            diff_dist.get('medium', 0),
+            diff_dist.get('hard', 0),
+        ]
+        context['difficulty_data'] = json.dumps(difficulty_data)
+        
+        # Year trend data
+        year_trend = stats['year_trend']
+        year_labels = [item['year'] for item in year_trend]
+        year_data = [item['question_count'] for item in year_trend]
+        context['year_labels'] = json.dumps(year_labels)
+        context['year_data'] = json.dumps(year_data)
+        
+        # Compute additional stats
+        total_questions = stats['overview']['total_questions']
+        total_papers = stats['overview']['papers_count']
+        repeated_questions = stats['overview']['duplicates']
+        
+        # Classification rate = questions with modules assigned
+        from apps.questions.models import Question
+        questions_with_module = Question.objects.filter(
+            paper__subject=subject,
+            module__isnull=False
+        ).count()
+        classification_rate = round(questions_with_module / total_questions * 100, 1) if total_questions else 0
+        
         context['subject'] = subject
-        context['stats'] = stats
+        context['stats'] = {
+            **stats['overview'],
+            'total_papers': total_papers,
+            'total_questions': total_questions,
+            'repeated_questions': repeated_questions,
+            'classification_rate': classification_rate,
+        }
         context['modules'] = module_data
+        context['module_stats'] = module_data  # For template compatibility
         context['has_analysis'] = TopicCluster.objects.filter(subject=subject).exists()
+        
+        # Get repeated questions (tier 1 and tier 2 topics)
+        repeated_clusters = TopicCluster.objects.filter(
+            subject=subject,
+            frequency_count__gte=2
+        ).order_by('-frequency_count')[:10]
+        context['repeated_questions'] = repeated_clusters
         
         return context
 

@@ -52,9 +52,9 @@
     <div class="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-200 dark:border-gray-700">
         <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">Quick Actions</h2>
         <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <a href="{% url 'subjects:create' %}" class="flex items-center p-4 bg-gray-50 dark:bg-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition">
-                <i data-lucide="plus" class="w-5 h-5 text-indigo-600 dark:text-indigo-400 mr-3"></i>
-                <span class="text-gray-700 dark:text-gray-300">Create Subject</span>
+            <a href="{% url 'papers:generic_upload' %}" class="flex items-center p-4 bg-gray-50 dark:bg-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition">
+                <i data-lucide="upload" class="w-5 h-5 text-indigo-600 dark:text-indigo-400 mr-3"></i>
+                <span class="text-gray-700 dark:text-gray-300">Upload Papers</span>
             </a>
             <a href="{% url 'subjects:list' %}" class="flex items-center p-4 bg-gray-50 dark:bg-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition">
                 <i data-lucide="list" class="w-5 h-5 text-green-600 dark:text-green-400 mr-3"></i>

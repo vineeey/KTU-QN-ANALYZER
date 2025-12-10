@@ -32,6 +32,20 @@ class SubjectDetailView(OwnerRequiredMixin, DetailView):
     
     def get_queryset(self):
         return Subject.objects.filter(user=self.request.user).prefetch_related('modules')
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        # Get paper processing status counts
+        papers = self.object.papers.all()
+        context['papers_pending'] = papers.filter(status='pending').count()
+        context['papers_processing'] = papers.filter(status='processing').count()
+        context['papers_completed'] = papers.filter(status='completed').count()
+        context['papers_failed'] = papers.filter(status='failed').count()
+        context['papers_total'] = papers.count()
+        context['questions_count'] = sum(p.get_question_count() for p in papers)
+        # Check if any papers are being processed
+        context['has_processing'] = context['papers_pending'] > 0 or context['papers_processing'] > 0
+        return context
 
 
 class SubjectCreateView(LoginRequiredMixin, CreateView):
