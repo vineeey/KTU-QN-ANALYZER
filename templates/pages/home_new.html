@@ -4,264 +4,431 @@
 
 {% block extra_head %}
 <style>
+/* Enhanced 3D Background with Slideshow Effect */
 @keyframes float {
-    0%, 100% { transform: translateY(0px); }
-    50% { transform: translateY(-20px); }
+    0%, 100% { transform: translateY(0px) scale(1); }
+    50% { transform: translateY(-30px) scale(1.05); }
 }
 
 @keyframes glow {
-    0%, 100% { box-shadow: 0 0 20px rgba(99, 102, 241, 0.5); }
-    50% { box-shadow: 0 0 40px rgba(99, 102, 241, 0.8); }
+    0%, 100% { 
+        box-shadow: 0 0 20px rgba(99, 102, 241, 0.5),
+                    0 0 40px rgba(139, 92, 246, 0.3);
+    }
+    50% { 
+        box-shadow: 0 0 40px rgba(99, 102, 241, 0.8),
+                    0 0 80px rgba(139, 92, 246, 0.6);
+    }
+}
+
+@keyframes slideshow {
+    0%, 33% { opacity: 1; transform: scale(1.1); }
+    33.33%, 100% { opacity: 0; transform: scale(1); }
+}
+
+@keyframes rotate {
+    0% { transform: rotate(0deg) scale(1); }
+    50% { transform: rotate(180deg) scale(1.2); }
+    100% { transform: rotate(360deg) scale(1); }
+}
+
+@keyframes morph {
+    0%, 100% { border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%; }
+    50% { border-radius: 30% 60% 70% 40% / 50% 60% 30% 60%; }
 }
 
 .float-animation {
-    animation: float 3s ease-in-out infinite;
+    animation: float 4s ease-in-out infinite;
+}
+
+.float-delayed {
+    animation: float 5s ease-in-out infinite;
+    animation-delay: 1s;
 }
 
 .glow-border {
-    animation: glow 2s ease-in-out infinite;
+    animation: glow 3s ease-in-out infinite;
 }
 
 .card-3d {
     transform-style: preserve-3d;
-    transition: all 0.3s ease;
+    transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+}
+
+.card-3d::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(139, 92, 246, 0.1));
+    border-radius: inherit;
+    opacity: 0;
+    transition: opacity 0.5s ease;
 }
 
 .card-3d:hover {
-    transform: translateY(-10px) rotateX(5deg);
+    transform: translateY(-15px) rotateX(3deg) rotateY(3deg) scale(1.02);
+    box-shadow: 0 25px 50px rgba(0, 0, 0, 0.3);
+}
+
+.card-3d:hover::before {
+    opacity: 1;
 }
 
 .gradient-bg {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+    background-size: 200% 200%;
+    animation: gradient-shift 10s ease infinite;
+}
+
+@keyframes gradient-shift {
+    0%, 100% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
 }
 
 .glass-effect {
-    background: rgba(255, 255, 255, 0.1);
-    backdrop-filter: blur(10px);
-    border: 1px solid rgba(255, 255, 255, 0.2);
+    background: rgba(255, 255, 255, 0.08);
+    backdrop-filter: blur(12px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+}
+
+.bg-blob {
+    position: absolute;
+    border-radius: 40% 60% 70% 30% / 40% 50% 60% 50%;
+    animation: morph 20s ease-in-out infinite, rotate 30s linear infinite;
+    filter: blur(40px);
+}
+
+.bg-blob-1 {
+    width: 400px;
+    height: 400px;
+    top: 10%;
+    left: 10%;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    animation-delay: 0s;
+}
+
+.bg-blob-2 {
+    width: 500px;
+    height: 500px;
+    top: 40%;
+    right: 10%;
+    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    animation-delay: 5s;
+}
+
+.bg-blob-3 {
+    width: 450px;
+    height: 450px;
+    bottom: 10%;
+    left: 30%;
+    background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+    animation-delay: 10s;
+}
+
+.feature-icon {
+    transition: all 0.3s ease;
+}
+
+.feature-card:hover .feature-icon {
+    transform: scale(1.2) rotate(5deg);
+}
+
+/* Scroll Indicator */
+.scroll-indicator {
+    animation: float 2s ease-in-out infinite;
 }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="min-h-screen bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-900 relative overflow-hidden">
-    <!-- Animated background -->
-    <div class="absolute inset-0 opacity-20">
-        <div class="absolute top-20 left-20 w-64 h-64 bg-blue-500 rounded-full mix-blend-multiply filter blur-3xl animate-pulse"></div>
-        <div class="absolute top-40 right-20 w-64 h-64 bg-purple-500 rounded-full mix-blend-multiply filter blur-3xl animate-pulse" style="animation-delay: 1s;"></div>
-        <div class="absolute bottom-20 left-40 w-64 h-64 bg-pink-500 rounded-full mix-blend-multiply filter blur-3xl animate-pulse" style="animation-delay: 2s;"></div>
+<div class="min-h-screen bg-gradient-to-br from-indigo-950 via-purple-950 to-pink-950 relative overflow-hidden">
+    <!-- Enhanced Animated 3D Background with Morphing Blobs -->
+    <div class="absolute inset-0 overflow-hidden">
+        <div class="bg-blob bg-blob-1"></div>
+        <div class="bg-blob bg-blob-2"></div>
+        <div class="bg-blob bg-blob-3"></div>
+        
+        <!-- Additional Animated Particles -->
+        <div class="absolute inset-0 opacity-30">
+            <div class="absolute top-1/4 left-1/4 w-2 h-2 bg-white rounded-full animate-pulse"></div>
+            <div class="absolute top-1/3 right-1/3 w-3 h-3 bg-blue-300 rounded-full animate-pulse" style="animation-delay: 1s;"></div>
+            <div class="absolute bottom-1/4 left-1/2 w-2 h-2 bg-purple-300 rounded-full animate-pulse" style="animation-delay: 2s;"></div>
+            <div class="absolute top-2/3 right-1/4 w-3 h-3 bg-pink-300 rounded-full animate-pulse" style="animation-delay: 0.5s;"></div>
+        </div>
     </div>
 
     <div class="relative z-10">
         <!-- Hero Section -->
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-16">
             <div class="text-center float-animation">
-                <h1 class="text-6xl md:text-7xl font-extrabold text-white mb-6">
-                    Universal Exam Analyzer
+                <h1 class="text-6xl md:text-7xl lg:text-8xl font-extrabold text-white mb-6 tracking-tight">
+                    <span class="bg-clip-text text-transparent bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400">
+                        Universal Exam Analyzer
+                    </span>
                 </h1>
-                <p class="text-2xl text-indigo-200 mb-4">
+                <p class="text-2xl md:text-3xl text-indigo-200 mb-4 font-semibold">
                     AI Question Paper Intelligence System
                 </p>
-                <p class="text-lg text-gray-300 max-w-3xl mx-auto mb-8">
-                    Analyze question papers from <strong>KTU</strong> or <strong>ANY University</strong>.
+                <p class="text-lg md:text-xl text-gray-300 max-w-3xl mx-auto mb-8 leading-relaxed">
+                    Analyze question papers from <strong class="text-blue-300">KTU</strong> or <strong class="text-purple-300">ANY University</strong>.
                     Upload PDFs, get AI-powered analysis, and download beautifully formatted study guides.
-                    <strong>100% Free. 100% Local. No Login Required.</strong>
+                    <strong class="text-pink-300">100% Free. 100% Local. No Login Required.</strong>
                 </p>
+                
+                <!-- CTA Buttons -->
+                <div class="flex flex-col sm:flex-row gap-4 justify-center items-center mt-10">
+                    <a href="{% url 'papers:upload_generic' %}" 
+                       class="group inline-flex items-center px-8 py-4 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-bold rounded-full text-lg transition-all duration-300 transform hover:scale-110 glow-border shadow-2xl">
+                        <svg class="w-6 h-6 mr-2 group-hover:animate-bounce" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+                        </svg>
+                        Upload Papers Now
+                    </a>
+                    {% if user.is_authenticated %}
+                    <a href="{% url 'subjects:list' %}" 
+                       class="inline-flex items-center px-8 py-4 bg-white/10 hover:bg-white/20 text-white font-semibold rounded-full text-lg transition-all duration-300 border-2 border-white/30 backdrop-blur-sm">
+                        <svg class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                        </svg>
+                        View Dashboard
+                    </a>
+                    {% endif %}
+                </div>
+                
+                <!-- Scroll Indicator -->
+                <div class="mt-16 flex justify-center">
+                    <div class="scroll-indicator text-white/50 animate-bounce">
+                        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path>
+                        </svg>
+                    </div>
+                </div>
             </div>
 
             <!-- Main Action Cards -->
-            <div class="grid md:grid-cols-3 gap-8 mt-16 max-w-6xl mx-auto">
+            <div class="grid md:grid-cols-3 gap-8 mt-20 max-w-6xl mx-auto">
                 <!-- Upload Card -->
-                <div class="card-3d glass-effect rounded-2xl p-8 text-center hover:scale-105 transition-all duration-300 glow-border">
-                    <div class="w-20 h-20 mx-auto mb-6 bg-gradient-to-br from-blue-400 to-blue-600 rounded-2xl flex items-center justify-center">
-                        <svg class="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div class="card-3d glass-effect rounded-2xl p-8 text-center hover:scale-105 transition-all duration-500 glow-border scroll-reveal">
+                    <div class="w-24 h-24 mx-auto mb-6 bg-gradient-to-br from-blue-400 to-blue-600 rounded-2xl flex items-center justify-center feature-icon shadow-xl">
+                        <svg class="w-12 h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
                         </svg>
                     </div>
                     <h3 class="text-2xl font-bold text-white mb-3">Upload Papers</h3>
-                    <p class="text-gray-300 mb-6">Drop your PDF question papers and let AI analyze them</p>
-                    <a href="{% url 'papers:upload_generic' %}" class="inline-block bg-blue-600 hover:bg-blue-700 text-white font-semibold px-8 py-3 rounded-lg transition-all duration-300 transform hover:scale-105">
+                    <p class="text-gray-300 mb-6 leading-relaxed">Drop your PDF question papers and let AI analyze them instantly</p>
+                    <a href="{% url 'papers:upload_generic' %}" class="inline-block bg-blue-600 hover:bg-blue-700 text-white font-semibold px-8 py-3 rounded-lg transition-all duration-300 transform hover:scale-105 shadow-lg">
                         Start Upload
                     </a>
                 </div>
 
                 <!-- University Selection Card -->
-                <div class="card-3d glass-effect rounded-2xl p-8 text-center hover:scale-105 transition-all duration-300 glow-border" style="animation-delay: 0.2s;">
-                    <div class="w-20 h-20 mx-auto mb-6 bg-gradient-to-br from-purple-400 to-purple-600 rounded-2xl flex items-center justify-center">
-                        <svg class="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div class="card-3d glass-effect rounded-2xl p-8 text-center hover:scale-105 transition-all duration-500 glow-border scroll-reveal" style="animation-delay: 0.2s;">
+                    <div class="w-24 h-24 mx-auto mb-6 bg-gradient-to-br from-purple-400 to-purple-600 rounded-2xl flex items-center justify-center feature-icon shadow-xl">
+                        <svg class="w-12 h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
                         </svg>
                     </div>
                     <h3 class="text-2xl font-bold text-white mb-3">Select University</h3>
-                    <p class="text-gray-300 mb-6">
-                        <strong>KTU:</strong> Rule-based mapping<br>
-                        <strong>Other:</strong> AI classification
+                    <p class="text-gray-300 mb-6 leading-relaxed">
+                        <strong class="text-blue-300">KTU:</strong> Rule-based mapping<br>
+                        <strong class="text-purple-300">Other:</strong> AI classification
                     </p>
-                    <div class="text-gray-400 text-sm">Selected during upload</div>
+                    <div class="text-gray-400 text-sm font-medium">Selected during upload</div>
                 </div>
 
                 <!-- Results Card -->
-                <div class="card-3d glass-effect rounded-2xl p-8 text-center hover:scale-105 transition-all duration-300 glow-border" style="animation-delay: 0.4s;">
-                    <div class="w-20 h-20 mx-auto mb-6 bg-gradient-to-br from-pink-400 to-pink-600 rounded-2xl flex items-center justify-center">
-                        <svg class="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div class="card-3d glass-effect rounded-2xl p-8 text-center hover:scale-105 transition-all duration-500 glow-border scroll-reveal" style="animation-delay: 0.4s;">
+                    <div class="w-24 h-24 mx-auto mb-6 bg-gradient-to-br from-pink-400 to-pink-600 rounded-2xl flex items-center justify-center feature-icon shadow-xl">
+                        <svg class="w-12 h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
                         </svg>
                     </div>
                     <h3 class="text-2xl font-bold text-white mb-3">Get Reports</h3>
-                    <p class="text-gray-300 mb-6">Download professional PDF reports with priority analysis</p>
+                    <p class="text-gray-300 mb-6 leading-relaxed">Download professional PDF reports with priority analysis</p>
                     {% if user.is_authenticated %}
-                    <a href="{% url 'subjects:list' %}" class="inline-block bg-pink-600 hover:bg-pink-700 text-white font-semibold px-8 py-3 rounded-lg transition-all duration-300 transform hover:scale-105">
+                    <a href="{% url 'subjects:list' %}" class="inline-block bg-pink-600 hover:bg-pink-700 text-white font-semibold px-8 py-3 rounded-lg transition-all duration-300 transform hover:scale-105 shadow-lg">
                         View Results
                     </a>
                     {% else %}
-                    <div class="text-gray-400 text-sm">Upload to see results</div>
+                    <div class="text-gray-400 text-sm font-medium">Upload to see results</div>
                     {% endif %}
                 </div>
             </div>
         </div>
 
         <!-- Features Grid -->
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-            <h2 class="text-4xl font-bold text-center text-white mb-12">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
+            <h2 class="text-4xl md:text-5xl font-bold text-center text-white mb-4 scroll-reveal">
                 Powerful AI Features
             </h2>
+            <p class="text-center text-gray-300 text-lg mb-16 scroll-reveal">
+                Advanced technology powering your exam preparation
+            </p>
             
             <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
                 <!-- Feature 1 -->
-                <div class="glass-effect rounded-xl p-6 hover:bg-white hover:bg-opacity-20 transition-all duration-300">
-                    <div class="w-12 h-12 bg-blue-500 rounded-lg flex items-center justify-center mb-4">
-                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div class="glass-effect rounded-xl p-6 hover:bg-white hover:bg-opacity-20 transition-all duration-300 feature-card scroll-reveal transform hover:-translate-y-2">
+                    <div class="w-14 h-14 bg-gradient-to-br from-blue-500 to-blue-700 rounded-lg flex items-center justify-center mb-4 feature-icon shadow-lg">
+                        <svg class="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                         </svg>
                     </div>
                     <h3 class="text-lg font-semibold text-white mb-2">Dual Classification</h3>
-                    <p class="text-gray-300 text-sm">KTU: Rule-based. Others: AI-powered semantic analysis</p>
+                    <p class="text-gray-300 text-sm leading-relaxed">KTU: Rule-based. Others: AI-powered semantic analysis</p>
                 </div>
 
                 <!-- Feature 2 -->
-                <div class="glass-effect rounded-xl p-6 hover:bg-white hover:bg-opacity-20 transition-all duration-300">
-                    <div class="w-12 h-12 bg-purple-500 rounded-lg flex items-center justify-center mb-4">
-                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div class="glass-effect rounded-xl p-6 hover:bg-white hover:bg-opacity-20 transition-all duration-300 feature-card scroll-reveal transform hover:-translate-y-2" style="animation-delay: 0.1s;">
+                    <div class="w-14 h-14 bg-gradient-to-br from-purple-500 to-purple-700 rounded-lg flex items-center justify-center mb-4 feature-icon shadow-lg">
+                        <svg class="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
                         </svg>
                     </div>
                     <h3 class="text-lg font-semibold text-white mb-2">Image Extraction</h3>
-                    <p class="text-gray-300 text-sm">PyMuPDF lossless extraction with diagrams preserved</p>
+                    <p class="text-gray-300 text-sm leading-relaxed">PyMuPDF lossless extraction with diagrams preserved</p>
                 </div>
 
                 <!-- Feature 3 -->
-                <div class="glass-effect rounded-xl p-6 hover:bg-white hover:bg-opacity-20 transition-all duration-300">
-                    <div class="w-12 h-12 bg-pink-500 rounded-lg flex items-center justify-center mb-4">
-                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div class="glass-effect rounded-xl p-6 hover:bg-white hover:bg-opacity-20 transition-all duration-300 feature-card scroll-reveal transform hover:-translate-y-2" style="animation-delay: 0.2s;">
+                    <div class="w-14 h-14 bg-gradient-to-br from-pink-500 to-pink-700 rounded-lg flex items-center justify-center mb-4 feature-icon shadow-lg">
+                        <svg class="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path>
                         </svg>
                     </div>
                     <h3 class="text-lg font-semibold text-white mb-2">Local LLM</h3>
-                    <p class="text-gray-300 text-sm">Ollama integration: TinyLlama, Phi-3, LLaMA 3</p>
+                    <p class="text-gray-300 text-sm leading-relaxed">Ollama integration: TinyLlama, Phi-3, LLaMA 3</p>
                 </div>
 
                 <!-- Feature 4 -->
-                <div class="glass-effect rounded-xl p-6 hover:bg-white hover:bg-opacity-20 transition-all duration-300">
-                    <div class="w-12 h-12 bg-yellow-500 rounded-lg flex items-center justify-center mb-4">
-                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div class="glass-effect rounded-xl p-6 hover:bg-white hover:bg-opacity-20 transition-all duration-300 feature-card scroll-reveal transform hover:-translate-y-2" style="animation-delay: 0.3s;">
+                    <div class="w-14 h-14 bg-gradient-to-br from-yellow-500 to-yellow-700 rounded-lg flex items-center justify-center mb-4 feature-icon shadow-lg">
+                        <svg class="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
                         </svg>
                     </div>
                     <h3 class="text-lg font-semibold text-white mb-2">Smart Analysis</h3>
-                    <p class="text-gray-300 text-sm">Bloom's level, difficulty, question type classification</p>
+                    <p class="text-gray-300 text-sm leading-relaxed">Bloom's level, difficulty, question type classification</p>
                 </div>
 
                 <!-- Feature 5 -->
-                <div class="glass-effect rounded-xl p-6 hover:bg-white hover:bg-opacity-20 transition-all duration-300">
-                    <div class="w-12 h-12 bg-green-500 rounded-lg flex items-center justify-center mb-4">
-                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div class="glass-effect rounded-xl p-6 hover:bg-white hover:bg-opacity-20 transition-all duration-300 feature-card scroll-reveal transform hover:-translate-y-2" style="animation-delay: 0.4s;">
+                    <div class="w-14 h-14 bg-gradient-to-br from-green-500 to-green-700 rounded-lg flex items-center justify-center mb-4 feature-icon shadow-lg">
+                        <svg class="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
                         </svg>
                     </div>
                     <h3 class="text-lg font-semibold text-white mb-2">Duplicate Detection</h3>
-                    <p class="text-gray-300 text-sm">Find repeated questions across years automatically</p>
+                    <p class="text-gray-300 text-sm leading-relaxed">Find repeated questions across years automatically</p>
                 </div>
 
                 <!-- Feature 6 -->
-                <div class="glass-effect rounded-xl p-6 hover:bg-white hover:bg-opacity-20 transition-all duration-300">
-                    <div class="w-12 h-12 bg-red-500 rounded-lg flex items-center justify-center mb-4">
-                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div class="glass-effect rounded-xl p-6 hover:bg-white hover:bg-opacity-20 transition-all duration-300 feature-card scroll-reveal transform hover:-translate-y-2" style="animation-delay: 0.5s;">
+                    <div class="w-14 h-14 bg-gradient-to-br from-red-500 to-red-700 rounded-lg flex items-center justify-center mb-4 feature-icon shadow-lg">
+                        <svg class="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
                         </svg>
                     </div>
                     <h3 class="text-lg font-semibold text-white mb-2">Priority Ranking</h3>
-                    <p class="text-gray-300 text-sm">4-tier system based on frequency and importance</p>
+                    <p class="text-gray-300 text-sm leading-relaxed">4-tier system based on frequency and importance</p>
                 </div>
 
                 <!-- Feature 7 -->
-                <div class="glass-effect rounded-xl p-6 hover:bg-white hover:bg-opacity-20 transition-all duration-300">
-                    <div class="w-12 h-12 bg-indigo-500 rounded-lg flex items-center justify-center mb-4">
-                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div class="glass-effect rounded-xl p-6 hover:bg-white hover:bg-opacity-20 transition-all duration-300 feature-card scroll-reveal transform hover:-translate-y-2" style="animation-delay: 0.6s;">
+                    <div class="w-14 h-14 bg-gradient-to-br from-indigo-500 to-indigo-700 rounded-lg flex items-center justify-center mb-4 feature-icon shadow-lg">
+                        <svg class="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path>
                         </svg>
                     </div>
                     <h3 class="text-lg font-semibold text-white mb-2">Syllabus Matching</h3>
-                    <p class="text-gray-300 text-sm">Optional syllabus upload for accurate topic mapping</p>
+                    <p class="text-gray-300 text-sm leading-relaxed">Optional syllabus upload for accurate topic mapping</p>
                 </div>
 
                 <!-- Feature 8 -->
-                <div class="glass-effect rounded-xl p-6 hover:bg-white hover:bg-opacity-20 transition-all duration-300">
-                    <div class="w-12 h-12 bg-cyan-500 rounded-lg flex items-center justify-center mb-4">
-                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div class="glass-effect rounded-xl p-6 hover:bg-white hover:bg-opacity-20 transition-all duration-300 feature-card scroll-reveal transform hover:-translate-y-2" style="animation-delay: 0.7s;">
+                    <div class="w-14 h-14 bg-gradient-to-br from-cyan-500 to-cyan-700 rounded-lg flex items-center justify-center mb-4 feature-icon shadow-lg">
+                        <svg class="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01"></path>
                         </svg>
                     </div>
                     <h3 class="text-lg font-semibold text-white mb-2">Professional Reports</h3>
-                    <p class="text-gray-300 text-sm">Faculty-style PDFs with year-wise organization</p>
+                    <p class="text-gray-300 text-sm leading-relaxed">Faculty-style PDFs with year-wise organization</p>
                 </div>
             </div>
         </div>
 
         <!-- How It Works -->
-        <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-            <h2 class="text-4xl font-bold text-center text-white mb-12">
+        <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
+            <h2 class="text-4xl md:text-5xl font-bold text-center text-white mb-4 scroll-reveal">
                 How It Works
             </h2>
+            <p class="text-center text-gray-300 text-lg mb-16 scroll-reveal">
+                Simple, fast, and powerful - get started in 3 easy steps
+            </p>
             
-            <div class="space-y-8">
-                <div class="flex items-start space-x-4">
-                    <div class="flex-shrink-0 w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-700 rounded-full flex items-center justify-center text-white font-bold text-xl">1</div>
-                    <div class="flex-1">
-                        <h3 class="text-xl font-semibold text-white mb-2">Upload Your Papers</h3>
-                        <p class="text-gray-300">Drop one or more PDF question papers. Select KTU or Other University. Optionally upload syllabus.</p>
+            <div class="space-y-12">
+                <div class="flex items-start space-x-6 scroll-reveal">
+                    <div class="flex-shrink-0 w-16 h-16 bg-gradient-to-br from-blue-500 to-blue-700 rounded-2xl flex items-center justify-center text-white font-bold text-2xl shadow-xl transform hover:scale-110 transition-transform duration-300">1</div>
+                    <div class="flex-1 pt-2">
+                        <h3 class="text-2xl font-semibold text-white mb-3">Upload Your Papers</h3>
+                        <p class="text-gray-300 text-lg leading-relaxed">Drop one or more PDF question papers. Select KTU or Other University. Optionally upload syllabus for better AI accuracy.</p>
                     </div>
                 </div>
                 
-                <div class="flex items-start space-x-4">
-                    <div class="flex-shrink-0 w-12 h-12 bg-gradient-to-br from-purple-500 to-purple-700 rounded-full flex items-center justify-center text-white font-bold text-xl">2</div>
-                    <div class="flex-1">
-                        <h3 class="text-xl font-semibold text-white mb-2">AI Analyzes Everything</h3>
-                        <p class="text-gray-300">PyMuPDF extracts text and images. Questions are classified to modules. LLM identifies difficulty, Bloom's level, and type.</p>
+                <div class="flex items-start space-x-6 scroll-reveal">
+                    <div class="flex-shrink-0 w-16 h-16 bg-gradient-to-br from-purple-500 to-purple-700 rounded-2xl flex items-center justify-center text-white font-bold text-2xl shadow-xl transform hover:scale-110 transition-transform duration-300">2</div>
+                    <div class="flex-1 pt-2">
+                        <h3 class="text-2xl font-semibold text-white mb-3">AI Analyzes Everything</h3>
+                        <p class="text-gray-300 text-lg leading-relaxed">PyMuPDF extracts text and images. Questions are classified to modules. Local LLM identifies difficulty, Bloom's level, and type.</p>
                     </div>
                 </div>
                 
-                <div class="flex items-start space-x-4">
-                    <div class="flex-shrink-0 w-12 h-12 bg-gradient-to-br from-pink-500 to-pink-700 rounded-full flex items-center justify-center text-white font-bold text-xl">3</div>
-                    <div class="flex-1">
-                        <h3 class="text-xl font-semibold text-white mb-2">Get Your Report</h3>
-                        <p class="text-gray-300">Download beautifully formatted PDFs with module-wise questions, repetition analysis, and priority rankings.</p>
+                <div class="flex items-start space-x-6 scroll-reveal">
+                    <div class="flex-shrink-0 w-16 h-16 bg-gradient-to-br from-pink-500 to-pink-700 rounded-2xl flex items-center justify-center text-white font-bold text-2xl shadow-xl transform hover:scale-110 transition-transform duration-300">3</div>
+                    <div class="flex-1 pt-2">
+                        <h3 class="text-2xl font-semibold text-white mb-3">Get Your Report</h3>
+                        <p class="text-gray-300 text-lg leading-relaxed">Download beautifully formatted PDFs with module-wise questions, repetition analysis, and priority rankings for efficient exam preparation.</p>
                     </div>
                 </div>
             </div>
         </div>
 
         <!-- CTA Section -->
-        <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-16 text-center">
-            <div class="glass-effect rounded-2xl p-12">
-                <h2 class="text-4xl font-bold text-white mb-4">
+        <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-20 text-center">
+            <div class="glass-effect rounded-3xl p-12 md:p-16 scroll-reveal glow-border">
+                <h2 class="text-4xl md:text-5xl font-bold text-white mb-6">
                     Ready to Ace Your Exams?
                 </h2>
-                <p class="text-xl text-gray-300 mb-8">
-                    Start analyzing your question papers now. No registration required.
+                <p class="text-xl md:text-2xl text-gray-300 mb-10 leading-relaxed">
+                    Start analyzing your question papers now. No registration required.<br>
+                    <span class="text-blue-300 font-semibold">Completely free. Forever.</span>
                 </p>
-                <a href="{% url 'papers:upload_generic' %}" class="inline-block bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-bold px-12 py-4 rounded-full text-lg transition-all duration-300 transform hover:scale-105 glow-border">
-                    Upload Papers Now
-                </a>
+                <div class="flex flex-col sm:flex-row gap-4 justify-center items-center">
+                    <a href="{% url 'papers:upload_generic' %}" 
+                       class="group inline-flex items-center px-12 py-5 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-bold rounded-full text-xl transition-all duration-300 transform hover:scale-110 glow-border shadow-2xl">
+                        <svg class="w-7 h-7 mr-3 group-hover:animate-bounce" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                        </svg>
+                        Upload Papers Now
+                    </a>
+                </div>
+                
+                <!-- Stats Section -->
+                <div class="grid grid-cols-3 gap-8 mt-12 pt-12 border-t border-white/20">
+                    <div class="scroll-reveal">
+                        <div class="text-4xl md:text-5xl font-bold text-blue-400 mb-2">100%</div>
+                        <div class="text-gray-300 text-sm md:text-base">Free Forever</div>
+                    </div>
+                    <div class="scroll-reveal" style="animation-delay: 0.1s;">
+                        <div class="text-4xl md:text-5xl font-bold text-purple-400 mb-2">AI</div>
+                        <div class="text-gray-300 text-sm md:text-base">Powered</div>
+                    </div>
+                    <div class="scroll-reveal" style="animation-delay: 0.2s;">
+                        <div class="text-4xl md:text-5xl font-bold text-pink-400 mb-2">Local</div>
+                        <div class="text-gray-300 text-sm md:text-base">Privacy First</div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
