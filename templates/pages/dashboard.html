@@ -3,71 +3,90 @@
 {% block title %}Dashboard - PYQ Analyzer{% endblock %}
 
 {% block content %}
-<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-    <div class="mb-8">
-        <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Dashboard</h1>
-        <p class="text-gray-600 dark:text-gray-400 mt-1">Welcome back, {{ user.get_display_name }}!</p>
-    </div>
-    
-    <!-- Stats Cards -->
-    <div class="grid md:grid-cols-3 gap-6 mb-8">
-        <div class="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-200 dark:border-gray-700">
-            <div class="flex items-center justify-between">
-                <div>
-                    <p class="text-sm text-gray-500 dark:text-gray-400">Total Subjects</p>
-                    <p class="text-3xl font-bold text-gray-900 dark:text-white">{{ total_subjects }}</p>
+<div class="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 py-8">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <!-- Header -->
+        <div class="mb-10 scroll-reveal">
+            <h1 class="text-4xl md:text-5xl font-bold text-gray-900 dark:text-white mb-2">Dashboard</h1>
+            <p class="text-lg text-gray-600 dark:text-gray-400">Welcome back, <span class="text-indigo-600 dark:text-indigo-400 font-semibold">{{ user.get_display_name }}</span>! 👋</p>
+        </div>
+        
+        <!-- Stats Cards -->
+        <div class="grid md:grid-cols-3 gap-6 mb-10">
+            <!-- Total Subjects Card -->
+            <div class="scroll-reveal card-3d bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-lg border border-gray-200 dark:border-gray-700 hover:shadow-2xl transition-all duration-300">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">Total Subjects</p>
+                        <p class="text-4xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">{{ total_subjects }}</p>
+                    </div>
+                    <div class="w-16 h-16 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg transform hover:scale-110 transition-transform duration-300">
+                        <i data-lucide="book" class="w-8 h-8 text-white"></i>
+                    </div>
                 </div>
-                <div class="w-12 h-12 bg-indigo-100 dark:bg-indigo-900 rounded-lg flex items-center justify-center">
-                    <i data-lucide="book" class="w-6 h-6 text-indigo-600 dark:text-indigo-400"></i>
+            </div>
+            
+            <!-- Papers Uploaded Card -->
+            <div class="scroll-reveal card-3d bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-lg border border-gray-200 dark:border-gray-700 hover:shadow-2xl transition-all duration-300" style="animation-delay: 0.1s;">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">Papers Uploaded</p>
+                        <p class="text-4xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">{{ total_papers }}</p>
+                    </div>
+                    <div class="w-16 h-16 bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl flex items-center justify-center shadow-lg transform hover:scale-110 transition-transform duration-300">
+                        <i data-lucide="file-text" class="w-8 h-8 text-white"></i>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Questions Analyzed Card -->
+            <div class="scroll-reveal card-3d bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-lg border border-gray-200 dark:border-gray-700 hover:shadow-2xl transition-all duration-300" style="animation-delay: 0.2s;">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">Questions Analyzed</p>
+                        <p class="text-4xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">{{ total_questions }}</p>
+                    </div>
+                    <div class="w-16 h-16 bg-gradient-to-br from-purple-500 to-pink-600 rounded-2xl flex items-center justify-center shadow-lg transform hover:scale-110 transition-transform duration-300">
+                        <i data-lucide="help-circle" class="w-8 h-8 text-white"></i>
+                    </div>
                 </div>
             </div>
         </div>
         
-        <div class="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-200 dark:border-gray-700">
-            <div class="flex items-center justify-between">
-                <div>
-                    <p class="text-sm text-gray-500 dark:text-gray-400">Papers Uploaded</p>
-                    <p class="text-3xl font-bold text-gray-900 dark:text-white">{{ total_papers }}</p>
+        <!-- Quick Actions -->
+        <div class="scroll-reveal bg-white dark:bg-gray-800 rounded-2xl p-8 shadow-lg border border-gray-200 dark:border-gray-700">
+            <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-6 flex items-center">
+                <div class="w-10 h-10 bg-gradient-to-br from-blue-500 to-cyan-600 rounded-xl flex items-center justify-center mr-3">
+                    <i data-lucide="zap" class="w-6 h-6 text-white"></i>
                 </div>
-                <div class="w-12 h-12 bg-green-100 dark:bg-green-900 rounded-lg flex items-center justify-center">
-                    <i data-lucide="file-text" class="w-6 h-6 text-green-600 dark:text-green-400"></i>
-                </div>
+                Quick Actions
+            </h2>
+            <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <a href="{% url 'papers:upload_generic' %}" class="group flex items-center p-5 bg-gradient-to-br from-indigo-50 to-purple-50 dark:from-indigo-900/20 dark:to-purple-900/20 rounded-xl hover:shadow-lg border-2 border-transparent hover:border-indigo-500 transition-all duration-300 transform hover:scale-105">
+                    <div class="w-12 h-12 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center mr-4 group-hover:scale-110 transition-transform duration-300">
+                        <i data-lucide="upload" class="w-6 h-6 text-white"></i>
+                    </div>
+                    <span class="text-base font-semibold text-gray-700 dark:text-gray-300">Upload Papers</span>
+                </a>
+                <a href="{% url 'subjects:list' %}" class="group flex items-center p-5 bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 rounded-xl hover:shadow-lg border-2 border-transparent hover:border-green-500 transition-all duration-300 transform hover:scale-105">
+                    <div class="w-12 h-12 bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl flex items-center justify-center mr-4 group-hover:scale-110 transition-transform duration-300">
+                        <i data-lucide="list" class="w-6 h-6 text-white"></i>
+                    </div>
+                    <span class="text-base font-semibold text-gray-700 dark:text-gray-300">View Subjects</span>
+                </a>
+                <a href="{% url 'questions:list' %}" class="group flex items-center p-5 bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 rounded-xl hover:shadow-lg border-2 border-transparent hover:border-purple-500 transition-all duration-300 transform hover:scale-105">
+                    <div class="w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-600 rounded-xl flex items-center justify-center mr-4 group-hover:scale-110 transition-transform duration-300">
+                        <i data-lucide="search" class="w-6 h-6 text-white"></i>
+                    </div>
+                    <span class="text-base font-semibold text-gray-700 dark:text-gray-300">Browse Questions</span>
+                </a>
+                <a href="{% url 'users:profile' %}" class="group flex items-center p-5 bg-gradient-to-br from-gray-50 to-slate-50 dark:from-gray-700/50 dark:to-slate-700/50 rounded-xl hover:shadow-lg border-2 border-transparent hover:border-gray-500 transition-all duration-300 transform hover:scale-105">
+                    <div class="w-12 h-12 bg-gradient-to-br from-gray-500 to-slate-600 rounded-xl flex items-center justify-center mr-4 group-hover:scale-110 transition-transform duration-300">
+                        <i data-lucide="settings" class="w-6 h-6 text-white"></i>
+                    </div>
+                    <span class="text-base font-semibold text-gray-700 dark:text-gray-300">Settings</span>
+                </a>
             </div>
-        </div>
-        
-        <div class="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-200 dark:border-gray-700">
-            <div class="flex items-center justify-between">
-                <div>
-                    <p class="text-sm text-gray-500 dark:text-gray-400">Questions Analyzed</p>
-                    <p class="text-3xl font-bold text-gray-900 dark:text-white">{{ total_questions }}</p>
-                </div>
-                <div class="w-12 h-12 bg-purple-100 dark:bg-purple-900 rounded-lg flex items-center justify-center">
-                    <i data-lucide="help-circle" class="w-6 h-6 text-purple-600 dark:text-purple-400"></i>
-                </div>
-            </div>
-        </div>
-    </div>
-    
-    <!-- Quick Actions -->
-    <div class="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-200 dark:border-gray-700">
-        <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">Quick Actions</h2>
-        <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <a href="{% url 'papers:generic_upload' %}" class="flex items-center p-4 bg-gray-50 dark:bg-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition">
-                <i data-lucide="upload" class="w-5 h-5 text-indigo-600 dark:text-indigo-400 mr-3"></i>
-                <span class="text-gray-700 dark:text-gray-300">Upload Papers</span>
-            </a>
-            <a href="{% url 'subjects:list' %}" class="flex items-center p-4 bg-gray-50 dark:bg-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition">
-                <i data-lucide="list" class="w-5 h-5 text-green-600 dark:text-green-400 mr-3"></i>
-                <span class="text-gray-700 dark:text-gray-300">View Subjects</span>
-            </a>
-            <a href="{% url 'questions:list' %}" class="flex items-center p-4 bg-gray-50 dark:bg-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition">
-                <i data-lucide="search" class="w-5 h-5 text-purple-600 dark:text-purple-400 mr-3"></i>
-                <span class="text-gray-700 dark:text-gray-300">Browse Questions</span>
-            </a>
-            <a href="{% url 'users:profile' %}" class="flex items-center p-4 bg-gray-50 dark:bg-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition">
-                <i data-lucide="settings" class="w-5 h-5 text-gray-600 dark:text-gray-400 mr-3"></i>
-                <span class="text-gray-700 dark:text-gray-300">Settings</span>
-            </a>
         </div>
     </div>
 </div>
