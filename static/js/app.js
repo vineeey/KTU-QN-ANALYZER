@@ -38,6 +38,18 @@ document.body.addEventListener('htmx:configRequest', function(evt) {
     }
 });
 
+// Configuration constants
+const SCROLL_REVEAL_CONFIG = {
+    threshold: 0.1,
+    rootMargin: '0px 0px -50px 0px'
+};
+
+const TILT_3D_CONFIG = {
+    perspective: 1000,
+    maxRotation: 10,
+    scale: 1.05
+};
+
 // Scroll Reveal Animation
 function initScrollReveal() {
     const revealElements = document.querySelectorAll('.scroll-reveal');
@@ -48,10 +60,7 @@ function initScrollReveal() {
                 entry.target.classList.add('revealed');
             }
         });
-    }, {
-        threshold: 0.1,
-        rootMargin: '0px 0px -50px 0px'
-    });
+    }, SCROLL_REVEAL_CONFIG);
     
     revealElements.forEach(el => revealObserver.observe(el));
 }
@@ -69,14 +78,14 @@ function init3DTilt() {
             const centerX = rect.width / 2;
             const centerY = rect.height / 2;
             
-            const rotateX = (y - centerY) / 10;
-            const rotateY = (centerX - x) / 10;
+            const rotateX = (y - centerY) / TILT_3D_CONFIG.maxRotation;
+            const rotateY = (centerX - x) / TILT_3D_CONFIG.maxRotation;
             
-            card.style.transform = `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale3d(1.05, 1.05, 1.05)`;
+            card.style.transform = `perspective(${TILT_3D_CONFIG.perspective}px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale3d(${TILT_3D_CONFIG.scale}, ${TILT_3D_CONFIG.scale}, ${TILT_3D_CONFIG.scale})`;
         });
         
         card.addEventListener('mouseleave', () => {
-            card.style.transform = 'perspective(1000px) rotateX(0) rotateY(0) scale3d(1, 1, 1)';
+            card.style.transform = `perspective(${TILT_3D_CONFIG.perspective}px) rotateX(0) rotateY(0) scale3d(1, 1, 1)`;
         });
     });
 }
