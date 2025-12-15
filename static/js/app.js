@@ -5,11 +5,6 @@
 
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', function() {
-    // Initialize Lucide icons
-    if (typeof lucide !== 'undefined') {
-        lucide.createIcons();
-    }
-    
     // Initialize scroll reveal animations
     initScrollReveal();
     
@@ -19,13 +14,14 @@ document.addEventListener('DOMContentLoaded', function() {
     // Initialize smooth scrolling
     initSmoothScroll();
     
-    // Re-initialize icons after HTMX swaps
+    // Re-initialize after HTMX swaps
     document.body.addEventListener('htmx:afterSwap', function() {
+        // Re-initialize all effects for new content
         if (typeof lucide !== 'undefined') {
             lucide.createIcons();
         }
-        // Re-initialize scroll reveal for new content
         initScrollReveal();
+        init3DTilt();
     });
 });
 
