@@ -122,8 +122,11 @@ class KTUModuleReportGenerator:
             spaceAfter=30,
             textColor=black
         )
+        subject_name = (data['subject'].name or 'Subject').upper()
+        scheme = data['subject'].year or 'KTU 2019 Scheme'
+        university = data['subject'].university or 'KTU'
         story.append(Paragraph(
-            f"Module {data['module'].number} – DISASTER MANAGEMENT (KTU 2019 Scheme)",
+            f"Module {data['module'].number} – {subject_name} ({university} {scheme})",
             title_style
         ))
         story.append(Spacer(1, 0.5*cm))
@@ -321,7 +324,7 @@ class KTUModuleReportGenerator:
         # LOW PRIORITY
         if data['priority']['low']:
             story.append(Paragraph(
-                '✓ <b>LOW PRIORITY — Appears Only Once (But still Module {data["module"].number})</b>',
+                f'✓ <b>LOW PRIORITY — Appears Only Once (But still Module {data["module"].number})</b>',
                 tier_title_style
             ))
             for item in data['priority']['low']:
@@ -465,11 +468,12 @@ class KTUModuleReportGenerator:
                 'years': ', '.join(str(y) for y in years) if years else 'N/A'
             }
             
-            if freq >= 4:
+            # Use integer tier values (1=top, 2=high, 3=medium, 4=low)
+            if cluster.priority_tier == 1 or freq >= 4:
                 priority['top'].append(item)
-            elif freq == 3:
+            elif cluster.priority_tier == 2 or freq == 3:
                 priority['high'].append(item)
-            elif freq == 2:
+            elif cluster.priority_tier == 3 or freq == 2:
                 priority['medium'].append(item)
             else:
                 priority['low'].append(item)
@@ -511,16 +515,27 @@ class KTUModuleReportGenerator:
         return text
     
     def _sorted_years(self, years) -> List[str]:
-        """Sort years chronologically."""
-        year_order = {
-            'December 2021': 1,
-            'December 2022': 2,
-            'December 2023': 3,
-            'June 2024': 4,
-            'November 2024': 5,
-            'May 2025': 6
+        """Sort exam_type labels chronologically, defaulting unknowns to bottom."""
+        month_order = {
+            'January': 1, 'February': 2, 'March': 3, 'April': 4, 'May': 5,
+            'June': 6, 'July': 7, 'August': 8, 'September': 9,
+            'October': 10, 'November': 11, 'December': 12
         }
-        return sorted(years, key=lambda y: year_order.get(y, 999))
+
+        def sort_key(label: str):
+            if not label:
+                return (9999, 99, label)
+            parts = label.split()
+            if len(parts) == 2 and parts[0] in month_order:
+                month = month_order[parts[0]]
+                try:
+                    year = int(parts[1])
+                except ValueError:
+                    year = 9999
+                return (year, month, label)
+            return (9999, 99, label)
+
+        return sorted(years, key=sort_key)
 
 
 def generate_ktu_module_reports(subject: Subject) -> Dict[int, Optional[str]]:

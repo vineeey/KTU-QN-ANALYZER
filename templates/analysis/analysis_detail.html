@@ -1,0 +1,29 @@
+{% extends 'base/base.html' %}
+
+{% block title %}Analysis Job{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto px-4 py-8">
+  <div class="flex items-start justify-between gap-4">
+    <div>
+      <h1 class="text-2xl font-semibold text-gray-900">Analysis Job</h1>
+      <p class="mt-1 text-sm text-gray-600">{{ job.paper.title }}</p>
+    </div>
+    <a class="px-4 py-2 rounded-md bg-gray-100 text-gray-800 hover:bg-gray-200 text-sm" href="{% url 'analysis:job_list' %}">Back</a>
+  </div>
+
+  <div class="mt-6 bg-white rounded-lg border border-gray-200 overflow-hidden">
+    <div class="p-4 border-b border-gray-200">
+      <p class="text-sm text-gray-700">Status: <span class="font-medium">{{ job.get_status_display }}</span></p>
+      <p class="mt-1 text-sm text-gray-700">Progress: <span class="font-medium">{{ job.progress }}%</span></p>
+      {% if job.status_detail %}<p class="mt-1 text-sm text-gray-700">{{ job.status_detail }}</p>{% endif %}
+      {% if job.error_message %}<p class="mt-2 text-sm text-red-700">{{ job.error_message }}</p>{% endif %}
+    </div>
+    <div class="p-4 text-sm text-gray-700 grid grid-cols-1 md:grid-cols-3 gap-3">
+      <div class="bg-gray-50 rounded-md p-3 border border-gray-200">Extracted: <span class="font-medium">{{ job.questions_extracted }}</span></div>
+      <div class="bg-gray-50 rounded-md p-3 border border-gray-200">Classified: <span class="font-medium">{{ job.questions_classified }}</span></div>
+      <div class="bg-gray-50 rounded-md p-3 border border-gray-200">Duplicates: <span class="font-medium">{{ job.duplicates_found }}</span></div>
+    </div>
+  </div>
+</div>
+{% endblock %}

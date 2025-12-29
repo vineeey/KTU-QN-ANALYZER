@@ -11,7 +11,8 @@ logger = logging.getLogger(__name__)
 class SimilarityService:
     """Detects duplicate questions using embedding similarity."""
     
-    def __init__(self, threshold: float = 0.85):
+    def __init__(self, threshold: float = 0.80):
+        # 0.80 → same question; 0.65–0.79 can be treated as same topic by callers
         self.threshold = threshold
     
     def cosine_similarity(self, vec1: List[float], vec2: List[float]) -> float:

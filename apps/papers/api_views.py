@@ -20,7 +20,7 @@ class StartProcessingView(View):
         subject_id = request.POST.get('subject_id')
         
         if paper_id:
-            # Process single paper
+            # Process single paper SYNCHRONOUSLY (no Django-Q required)
             paper = get_object_or_404(Paper, id=paper_id)
             
             if paper.status == Paper.ProcessingStatus.PROCESSING:
@@ -29,25 +29,37 @@ class StartProcessingView(View):
                     'message': 'Paper is already being processed'
                 })
             
-            # Queue for processing
-            from apps.analysis.tasks import analyze_paper_task
-            from django_q.tasks import async_task
-            
-            paper.status = Paper.ProcessingStatus.PROCESSING
-            paper.status_detail = 'Queued for processing...'
-            paper.progress_percent = 0
-            paper.save()
-            
-            async_task(analyze_paper_task, paper.id)
-            
-            return JsonResponse({
-                'success': True,
-                'message': f'Started processing: {paper.title}',
-                'paper_id': str(paper.id)
-            })
+            # Process IMMEDIATELY (synchronous)
+            try:
+                from apps.analysis.pipeline import AnalysisPipeline
+                
+                paper.status = Paper.ProcessingStatus.PROCESSING
+                paper.status_detail = 'Starting analysis...'
+                paper.progress_percent = 0
+                paper.save()
+                
+                # Run analysis synchronously
+                pipeline = AnalysisPipeline(llm_client=None)
+                pipeline.analyze_paper(paper)
+                
+                return JsonResponse({
+                    'success': True,
+                    'message': f'Processing complete: {paper.title}',
+                    'paper_id': str(paper.id)
+                })
+            except Exception as e:
+                paper.status = Paper.ProcessingStatus.FAILED
+                paper.processing_error = str(e)
+                paper.status_detail = f'Error: {str(e)}'
+                paper.save()
+                
+                return JsonResponse({
+                    'success': False,
+                    'message': f'Processing failed: {str(e)}'
+                })
             
         elif subject_id:
-            # Process all pending papers in subject
+            # Queue all pending papers for processing
             subject = get_object_or_404(Subject, id=subject_id)
             pending_papers = subject.papers.filter(status=Paper.ProcessingStatus.PENDING)
             
@@ -57,23 +69,26 @@ class StartProcessingView(View):
                     'message': 'No pending papers to process'
                 })
             
-            from apps.analysis.tasks import analyze_paper_task
-            from django_q.tasks import async_task
+            # Mark all papers as queued
+            count = pending_papers.update(
+                status=Paper.ProcessingStatus.PROCESSING,
+                status_detail='Queued for processing...',
+                progress_percent=0
+            )
             
-            count = 0
-            for paper in pending_papers:
-                paper.status = Paper.ProcessingStatus.PROCESSING
-                paper.status_detail = 'Queued for processing...'
-                paper.progress_percent = 0
-                paper.save()
-                
-                async_task(analyze_paper_task, paper.id)
-                count += 1
+            # Start background processing in a separate thread
+            import threading
+            from apps.papers.background_processor import process_subject_papers
+            
+            thread = threading.Thread(target=process_subject_papers, args=(subject_id,))
+            thread.daemon = True
+            thread.start()
             
             return JsonResponse({
                 'success': True,
-                'message': f'Started processing {count} papers',
-                'count': count
+                'message': f'Started processing {count} paper(s). Processing will begin shortly.',
+                'count': count,
+                'processing_started': True
             })
         
         return JsonResponse({

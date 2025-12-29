@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ module_name }} – {{ subject_name }} (KTU 2019 Scheme)</title>
+    <style>
+        @page {
+            size: A4;
+            margin: 2cm;
+        }
+        
+        body {
+            font-family: 'Arial', 'Helvetica', sans-serif;
+            font-size: 11pt;
+            line-height: 1.6;
+            color: #000;
+        }
+        
+        h1 {
+            text-align: center;
+            font-size: 18pt;
+            font-weight: bold;
+            margin-bottom: 1cm;
+            border-bottom: 3px solid #000;
+            padding-bottom: 10px;
+        }
+        
+        h2 {
+            font-size: 14pt;
+            font-weight: bold;
+            margin-top: 20px;
+            margin-bottom: 10px;
+            color: #1a1a1a;
+        }
+        
+        h3 {
+            font-size: 12pt;
+            font-weight: bold;
+            margin-top: 15px;
+            margin-bottom: 8px;
+            color: #2a2a2a;
+        }
+        
+        .section {
+            margin-bottom: 30px;
+        }
+        
+        .year-header {
+            font-weight: bold;
+            font-size: 11pt;
+            margin-top: 12px;
+            margin-bottom: 6px;
+        }
+        
+        .question {
+            margin-left: 20px;
+            margin-bottom: 4px;
+        }
+        
+        .question-text {
+            text-align: justify;
+        }
+        
+        .marks {
+            color: #555;
+            font-style: italic;
+        }
+        
+        .tier-section {
+            margin-top: 25px;
+            margin-bottom: 20px;
+        }
+        
+        .tier-header {
+            font-size: 13pt;
+            font-weight: bold;
+            margin-bottom: 10px;
+            padding: 5px;
+            background-color: #f0f0f0;
+        }
+        
+        .tier-1 .tier-header {
+            background-color: #ffcccc;
+        }
+        
+        .tier-2 .tier-header {
+            background-color: #ffe6cc;
+        }
+        
+        .tier-3 .tier-header {
+            background-color: #ffffcc;
+        }
+        
+        .tier-4 .tier-header {
+            background-color: #e6e6e6;
+        }
+        
+        .topic {
+            margin-bottom: 15px;
+            margin-left: 20px;
+        }
+        
+        .topic-name {
+            font-weight: bold;
+            font-size: 11pt;
+        }
+        
+        .topic-years {
+            color: #555;
+            margin-top: 3px;
+        }
+        
+        .topic-explanation {
+            margin-top: 5px;
+            text-align: justify;
+        }
+        
+        .study-order {
+            margin-top: 30px;
+            padding: 15px;
+            border: 2px solid #000;
+            background-color: #f9f9f9;
+        }
+        
+        .study-order h3 {
+            text-align: center;
+            font-size: 13pt;
+            margin-bottom: 15px;
+        }
+        
+        .study-tier {
+            margin-bottom: 12px;
+        }
+        
+        .study-tier-label {
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        ol {
+            margin-left: 25px;
+            margin-top: 5px;
+        }
+        
+        ul {
+            list-style-type: disc;
+            margin-left: 20px;
+        }
+        
+        .page-break {
+            page-break-after: always;
+        }
+    </style>
+</head>
+<body>
+    <!-- MODULE HEADING -->
+    <h1>{{ module_name }} – {{ subject_name }} (KTU 2019 Scheme)</h1>
+    
+    <!-- PART A SECTION -->
+    <div class="section">
+        <h2>PART A (3 Marks each)</h2>
+        <p>({{ part_a_qn_range }} belong to {{ module_name }})</p>
+        
+        {% for year, questions in part_a_by_year.items() %}
+        <div class="year-header">{{ year }}</div>
+        {% for q in questions %}
+        <div class="question">
+            • <span class="question-text">{{ q.text }}</span> — <span class="marks">({{ year }}, {{ q.marks }} marks)</span>
+        </div>
+        {% endfor %}
+        {% endfor %}
+    </div>
+    
+    <!-- PART B SECTION -->
+    <div class="section">
+        <h2>PART B (14 Marks each)</h2>
+        <p>({{ part_b_qn_range }} belong to {{ module_name }})</p>
+        
+        {% for year, questions in part_b_by_year.items() %}
+        <div class="year-header">{{ year }}</div>
+        {% for q in questions %}
+        <div class="question">
+            {% if q.question_number %}Qn {{ q.question_number }}{% endif %}
+            {% if q.sub_part %}({{ q.sub_part }}){% endif %}
+            <ul>
+                <li><span class="question-text">{{ q.text }}</span> — <span class="marks">({{ year }}, {{ q.marks }} marks)</span></li>
+            </ul>
+        </div>
+        {% endfor %}
+        {% endfor %}
+    </div>
+    
+    <div class="page-break"></div>
+    
+    <!-- REPEATED QUESTION ANALYSIS -->
+    <div class="section">
+        <h2>✅ {{ module_name }} — Repeated Question Analysis (Prioritized List)</h2>
+        <p>(Highest repeated = highest priority)</p>
+        
+        <!-- TIER 1: TOP PRIORITY -->
+        {% if clusters_by_tier[1] %}
+        <div class="tier-section tier-1">
+            <div class="tier-header">TOP PRIORITY — Repeated 4–6 Times</div>
+            {% for cluster in clusters_by_tier[1] %}
+            <div class="topic">
+                <div class="topic-name">{{ loop.index }}. {{ cluster.topic_name }}</div>
+                <div class="topic-years">Appears in: {{ cluster.years|join(', ') }}</div>
+                <div class="topic-explanation">
+                    • This topic appears {{ cluster.frequency }} times across different years<br>
+                    • Exam likelihood: Very High (appears almost every year)
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+        
+        <!-- TIER 2: HIGH PRIORITY -->
+        {% if clusters_by_tier[2] %}
+        <div class="tier-section tier-2">
+            <div class="tier-header">HIGH PRIORITY — Repeated 3 Times</div>
+            {% for cluster in clusters_by_tier[2] %}
+            <div class="topic">
+                <div class="topic-name">{{ loop.index }}. {{ cluster.topic_name }}</div>
+                <div class="topic-years">Appears in: {{ cluster.years|join(', ') }}</div>
+                <div class="topic-explanation">
+                    • This topic appears {{ cluster.frequency }} times across different years<br>
+                    • Exam likelihood: High (appears frequently)
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+        
+        <!-- TIER 3: MEDIUM PRIORITY -->
+        {% if clusters_by_tier[3] %}
+        <div class="tier-section tier-3">
+            <div class="tier-header">MEDIUM PRIORITY — Repeated 2 Times</div>
+            {% for cluster in clusters_by_tier[3] %}
+            <div class="topic">
+                <div class="topic-name">{{ loop.index }}. {{ cluster.topic_name }}</div>
+                <div class="topic-years">Appears in: {{ cluster.years|join(', ') }}</div>
+                <div class="topic-explanation">
+                    • This topic appears {{ cluster.frequency }} times<br>
+                    • Exam likelihood: Moderate
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+        
+        <!-- TIER 4: LOW PRIORITY -->
+        {% if clusters_by_tier[4] %}
+        <div class="tier-section tier-4">
+            <div class="tier-header">LOW PRIORITY — Appears Only Once</div>
+            {% for cluster in clusters_by_tier[4] %}
+            <div class="topic">
+                <div class="topic-name">{{ loop.index }}. {{ cluster.topic_name }}</div>
+                <div class="topic-years">Appears in: {{ cluster.years|join(', ') }}</div>
+                <div class="topic-explanation">
+                    • This topic appears only once<br>
+                    • Exam likelihood: Low
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+    </div>
+    
+    <div class="page-break"></div>
+    
+    <!-- FINAL PRIORITIZED STUDY ORDER -->
+    <div class="study-order">
+        <h3>FINAL PRIORITIZED STUDY ORDER — {{ module_name }}</h3>
+        
+        {% if clusters_by_tier[1] %}
+        <div class="study-tier">
+            <div class="study-tier-label">Tier 1 (Must learn first)</div>
+            <ol>
+                {% for cluster in clusters_by_tier[1] %}
+                <li>{{ cluster.topic_name }}</li>
+                {% endfor %}
+            </ol>
+        </div>
+        {% endif %}
+        
+        {% if clusters_by_tier[2] %}
+        <div class="study-tier">
+            <div class="study-tier-label">Tier 2</div>
+            <ol start="{{ clusters_by_tier[1]|length + 1 }}">
+                {% for cluster in clusters_by_tier[2] %}
+                <li>{{ cluster.topic_name }}</li>
+                {% endfor %}
+            </ol>
+        </div>
+        {% endif %}
+        
+        {% if clusters_by_tier[3] %}
+        <div class="study-tier">
+            <div class="study-tier-label">Tier 3</div>
+            <ol start="{{ clusters_by_tier[1]|length + clusters_by_tier[2]|length + 1 }}">
+                {% for cluster in clusters_by_tier[3] %}
+                <li>{{ cluster.topic_name }}</li>
+                {% endfor %}
+            </ol>
+        </div>
+        {% endif %}
+        
+        {% if clusters_by_tier[4] %}
+        <div class="study-tier">
+            <div class="study-tier-label">Tier 4</div>
+            <ol start="{{ clusters_by_tier[1]|length + clusters_by_tier[2]|length + clusters_by_tier[3]|length + 1 }}">
+                {% for cluster in clusters_by_tier[4][:10] %}  {# Limit tier 4 to first 10 #}
+                <li>{{ cluster.topic_name }}</li>
+                {% endfor %}
+            </ol>
+        </div>
+        {% endif %}
+    </div>
+</body>
+</html>

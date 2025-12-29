@@ -2,18 +2,21 @@
 Enhanced analysis pipeline with dual classification system.
 """
 import logging
+import os
 from typing import Optional
 from django.utils import timezone
 from django.conf import settings
 
 from apps.papers.models import Paper
 from apps.questions.models import Question
+from apps.analytics.clustering import TopicClusteringService
 from .models import AnalysisJob
 from .services.pymupdf_extractor import PyMuPDFExtractor
 from .services.extractor import QuestionExtractor
 from .services.classifier import ModuleClassifier
 from .services.bloom import BloomClassifier
 from .services.difficulty import DifficultyEstimator
+import fitz  # PyMuPDF for rendering (already a dependency)
 
 # Services with optional numpy dependency
 try:
@@ -45,7 +48,7 @@ class AnalysisPipeline:
         # Services (with numpy fallback handling)
         if NUMPY_AVAILABLE:
             self.embedder = EmbeddingService()
-            self.similarity = SimilarityService()
+            self.similarity = SimilarityService(threshold=0.80)
             self.ai_classifier = AIClassifier(llm_client, self.embedder)
         else:
             self.embedder = None
@@ -82,44 +85,62 @@ class AnalysisPipeline:
             
             logger.info(f"Starting analysis for {paper.title} - University: {subject.university_type if hasattr(subject, 'university_type') else 'KTU'}")
             
-            # Step 1: Extract text, images, and questions using PyMuPDF
+            # Step 1: Extract text and questions (pdfplumber first, then fitz, then OCR)
             job.status = AnalysisJob.Status.EXTRACTING
             job.progress = 5
             job.status_detail = 'Reading PDF file...'
             job.save()
             
-            # Update paper status
             paper.status = Paper.ProcessingStatus.PROCESSING
-            paper.status_detail = 'Extracting text from PDF...'
+            paper.status_detail = 'Extracting text from PDF (pdfplumber)...'
             paper.progress_percent = 5
             paper.save()
-            
-            try:
-                questions_data, images = self.pymupdf_extractor.extract_questions_with_images(
-                    paper.file.path
-                )
-                
-                # Store extracted text
-                paper.raw_text = self.pymupdf_extractor.extract_text(paper.file.path)
-                paper.page_count = self.pymupdf_extractor.get_page_count(paper.file.path)
-                paper.status_detail = f'Extracted {len(questions_data)} questions'
+
+            questions_data = []
+            images = []
+
+            # Primary: pdfplumber via QuestionExtractor
+            primary_text = self.fallback_extractor.extract_text(paper.file.path)
+            if primary_text:
+                questions_data = self.fallback_extractor.extract_questions(primary_text)
+                paper.raw_text = primary_text
+                paper.status_detail = f'Extracted {len(questions_data)} questions (pdfplumber)'
                 paper.questions_extracted = len(questions_data)
-                paper.progress_percent = 20
+                paper.progress_percent = 15
                 paper.save()
-                
-                logger.info(f"PyMuPDF: Extracted {len(questions_data)} questions and {len(images)} images")
-                
-            except Exception as e:
-                logger.error(f"PyMuPDF extraction failed, using fallback: {e}")
-                
-                # Fallback to pdfplumber
-                text = self.fallback_extractor.extract_text(paper.file.path)
-                paper.raw_text = text
-                paper.page_count = self.fallback_extractor.get_page_count(paper.file.path)
+
+            # Fallback: PyMuPDF structured parse (with images)
+            if not questions_data:
+                paper.status_detail = 'Extracting text from PDF (PyMuPDF fallback)...'
                 paper.save()
-                
-                questions_data = self.fallback_extractor.extract_questions(text)
-                images = []
+                try:
+                    questions_data, images = self.pymupdf_extractor.extract_questions_with_images(
+                        paper.file.path
+                    )
+                    paper.raw_text = self.pymupdf_extractor.extract_text(paper.file.path)
+                    paper.page_count = self.pymupdf_extractor.get_page_count(paper.file.path)
+                    paper.status_detail = f'Extracted {len(questions_data)} questions (fitz)'
+                    paper.questions_extracted = len(questions_data)
+                    paper.progress_percent = 20
+                    paper.save()
+                    logger.info(f"PyMuPDF: Extracted {len(questions_data)} questions and {len(images)} images")
+                except Exception as e:
+                    logger.error(f"PyMuPDF extraction failed: {e}")
+                    images = []
+
+            # OCR fallback if still empty
+            if not questions_data:
+                logger.warning("No questions extracted; attempting OCR fallback")
+                ocr_questions, ocr_text = self._ocr_extract_questions(paper.file.path)
+                if ocr_questions:
+                    questions_data = ocr_questions
+                    paper.raw_text = ocr_text or paper.raw_text
+                    paper.status_detail = f'Extracted {len(questions_data)} questions (OCR)'
+                    paper.questions_extracted = len(questions_data)
+                    paper.save()
+
+            if not questions_data:
+                raise Exception("No questions could be extracted from this PDF (try a clearer PDF or OCR)")
             
             job.questions_extracted = len(questions_data)
             job.progress = 30
@@ -156,10 +177,22 @@ class AnalysisPipeline:
             job.progress = 60
             job.status_detail = f'Classified {len(classified_questions)} questions'
             job.save()
+
+            # Surface classification progress on the paper for UI polling
+            paper.questions_classified = len(classified_questions)
+            paper.progress_percent = max(paper.progress_percent, 60)
+            paper.status_detail = f'Classified {len(classified_questions)} questions'
+            paper.save()
             
             # Step 3: Create question objects in database
             job.status = AnalysisJob.Status.ANALYZING
+            job.progress = 65
+            job.status_detail = 'Creating question records...'
             job.save()
+
+            paper.progress_percent = max(paper.progress_percent, 65)
+            paper.status_detail = 'Saving question records...'
+            paper.save()
             
             created_questions = []
             for i, q_data in enumerate(classified_questions):
@@ -194,6 +227,21 @@ class AnalysisPipeline:
                 )
                 
                 created_questions.append(question)
+
+            # Step 4: Build/update topic clusters for the whole subject
+            job.progress = 85
+            job.status_detail = 'Building topic clusters...'
+            job.save()
+
+            paper.progress_percent = max(paper.progress_percent, 85)
+            paper.status_detail = 'Building topic clusters...'
+            paper.save()
+
+            try:
+                TopicClusteringService(subject).analyze_subject()
+            except Exception as e:
+                # Clustering is best-effort; do not fail paper analysis if clustering fails.
+                logger.error(f"Topic clustering failed for subject {subject}: {e}", exc_info=True)
             
             job.progress = 90
             job.status_detail = 'Finalizing analysis...'
@@ -210,6 +258,10 @@ class AnalysisPipeline:
             job.status_detail = 'Analysis completed successfully'
             job.completed_at = timezone.now()
             job.save()
+
+            paper.progress_percent = 100
+            paper.status_detail = 'Analysis completed successfully'
+            paper.save()
             
             logger.info(f"Analysis completed: {len(created_questions)} questions created")
             return job
@@ -237,40 +289,43 @@ class AnalysisPipeline:
     ) -> list:
         """
         KTU-specific rule-based classification.
-        Uses strict question number to module mapping.
+        STRICT map:
+            Part A: Q1–Q10 → (1,1,2,2,3,3,4,4,5,5)
+            Part B: Q11–Q20 → (1,1,2,2,3,3,4,4,5,5)
+        No AI inference.
         """
-        logger.info("Using KTU rule-based classification")
-        
-        exam_pattern = None
-        if hasattr(subject, 'exam_pattern'):
-            exam_pattern = subject.exam_pattern
-        
+        logger.info("Using KTU strict rule-based classification")
+
+        # Fixed maps for module assignment
+        part_a_modules = [1, 1, 2, 2, 3, 3, 4, 4, 5, 5]
+        part_b_modules = [1, 1, 2, 2, 3, 3, 4, 4, 5, 5]
+
         classified = []
-        
-        for q_data in questions_data:
-            # Get module assignment from pattern
-            module_num = None
-            part = q_data.get('part', '')
-            
-            if exam_pattern and part:
-                module_num = exam_pattern.get_module_for_question(
-                    q_data['question_number'], part
-                )
-            
-            # Add module_number to data
-            q_data['module_number'] = module_num if module_num else 1
-            
-            # Use rule-based Bloom and difficulty
+
+        for idx, q_data in enumerate(questions_data):
+            q_number = idx + 1  # 1-indexed
+
+            if q_number <= 10:
+                part = 'A'
+                module_num = part_a_modules[q_number - 1]
+            else:
+                part = 'B'
+                offset = q_number - 11
+                module_num = part_b_modules[offset] if 0 <= offset < len(part_b_modules) else part_b_modules[-1]
+
+            q_data['question_number'] = str(q_number)
+            q_data['part'] = part
+            q_data['module_number'] = module_num
+
+            # Rule-based Bloom/difficulty and simple type
             q_data['bloom_level'] = self.bloom_classifier.classify(q_data['text'])
             q_data['difficulty'] = self.difficulty_estimator.estimate(
                 q_data['text'], q_data.get('marks')
             )
-            
-            # Simple question type classification
             q_data['question_type'] = self._simple_question_type(q_data['text'])
-            
+
             classified.append(q_data)
-        
+
         return classified
     
     def _simple_question_type(self, text: str) -> str:
@@ -289,3 +344,74 @@ class AnalysisPipeline:
             return 'comparison'
         else:
             return 'theory'
+
+    def _ocr_extract_questions(self, pdf_path: str):
+        """Render pages to images and OCR text, then parse questions.
+
+        Returns: (questions, raw_text)
+        """
+        try:
+            import pytesseract
+            from PIL import Image, ImageOps, ImageEnhance, ImageFilter
+            # Explicitly set tesseract path on Windows when not on PATH
+            tess_cmd = r"C:\\Program Files\\Tesseract-OCR\\tesseract.exe"
+            if os.path.exists(tess_cmd):
+                pytesseract.pytesseract.tesseract_cmd = tess_cmd
+        except Exception as e:
+            logger.warning(f"OCR skipped: pytesseract/Pillow not available ({e})")
+            return [], None
+
+        ocr_text_parts = []
+
+        try:
+            doc = fitz.open(pdf_path)
+        except Exception as e:
+            logger.error(f"OCR failed to open PDF: {e}")
+            return [], None
+
+        try:
+            for page in doc:
+                # Render page to image at higher DPI
+                pix = page.get_pixmap(matrix=fitz.Matrix(3, 3))  # 3x for better OCR
+                img = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
+
+                candidates = []
+
+                # Base grayscale
+                gray = ImageOps.grayscale(img)
+                candidates.append(gray)
+
+                # Contrast enhanced
+                enhancer = ImageEnhance.Contrast(gray)
+                candidates.append(enhancer.enhance(1.8))
+
+                # Sharpened
+                candidates.append(gray.filter(ImageFilter.UnsharpMask(radius=2, percent=150, threshold=3)))
+
+                # Two thresholds
+                candidates.append(gray.point(lambda x: 0 if x < 170 else 255, '1'))
+                candidates.append(gray.point(lambda x: 0 if x < 200 else 255, '1'))
+
+                page_text = []
+                for cand in candidates:
+                    try:
+                        text = pytesseract.image_to_string(cand, config='--psm 6 --oem 3')
+                    except Exception as e:
+                        logger.warning(f"OCR engine error: {e}")
+                        text = ''
+                    if text and text.strip():
+                        page_text.append(text)
+
+                if page_text:
+                    ocr_text_parts.append("\n".join(page_text))
+        finally:
+            doc.close()
+
+        if not ocr_text_parts:
+            logger.warning("OCR produced no text")
+            return [], None
+
+        full_text = "\n".join(ocr_text_parts)
+        questions = self.fallback_extractor.extract_questions(full_text)
+        logger.info(f"OCR extracted {len(questions)} questions")
+        return questions, full_text

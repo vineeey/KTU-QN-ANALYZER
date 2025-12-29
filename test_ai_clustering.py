@@ -57,10 +57,10 @@ for module_num in range(1, 6):
     print(f"{'='*80}")
     
     # Group by priority
-    tier1 = clusters.filter(priority_tier='tier_1')
-    tier2 = clusters.filter(priority_tier='tier_2')
-    tier3 = clusters.filter(priority_tier='tier_3')
-    tier4 = clusters.filter(priority_tier='tier_4')
+    tier1 = clusters.filter(priority_tier=TopicCluster.PriorityTier.TIER_1)
+    tier2 = clusters.filter(priority_tier=TopicCluster.PriorityTier.TIER_2)
+    tier3 = clusters.filter(priority_tier=TopicCluster.PriorityTier.TIER_3)
+    tier4 = clusters.filter(priority_tier=TopicCluster.PriorityTier.TIER_4)
     
     if tier1.exists():
         print(f"\n🔥🔥🔥 TOP PRIORITY — Repeated 4+ Times ({tier1.count()} topics)")

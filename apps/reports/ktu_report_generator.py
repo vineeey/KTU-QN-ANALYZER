@@ -87,13 +87,8 @@ class KTUModuleReportGenerator:
         part_a = self._group_part_a(questions.filter(part='A'))
         part_b = self._group_part_b(questions.filter(part='B'))
         
-        # Get clusters for priority analysis
-        clusters = TopicCluster.objects.filter(
-            module=module,
-            subject=self.subject
-        ).order_by('-frequency_count')
-        
-        priority = self._analyze_priorities(clusters)
+        # Analyze priorities based on question frequency (without TopicCluster)
+        priority = self._analyze_priorities_from_questions(questions)
         
         return {
             'module': module,
@@ -475,6 +470,54 @@ class KTUModuleReportGenerator:
                 priority['low'].append(item)
             
             rank += 1
+        
+        return priority
+    
+    def _analyze_priorities_from_questions(self, questions) -> Dict[str, List]:
+        """Analyze priority topics directly from questions (fallback when clusters unavailable)."""
+        from collections import Counter
+        
+        priority = {
+            'top': [],     # Tier 1: 4+ times
+            'high': [],    # Tier 2: 3 times
+            'medium': [],  # Tier 3: 2 times
+            'low': []      # Tier 4: 1 time
+        }
+        
+        # Count question text occurrences
+        question_counter = Counter()
+        question_years = defaultdict(set)
+        
+        for q in questions:
+            text = q.text[:100]  # Use first 100 chars as identifier
+            question_counter[text] += 1
+            if q.paper and q.paper.year:
+                question_years[text].add(q.paper.year)
+        
+        # Sort by frequency
+        rank = 1
+        for text, freq in question_counter.most_common():
+            years = sorted(question_years[text])
+            
+            item = {
+                'rank': rank,
+                'topic': text[:80] + '...' if len(text) > 80 else text,
+                'frequency': freq,
+                'years': ', '.join(str(y) for y in years)
+            }
+            
+            if freq >= 4:
+                priority['top'].append(item)
+            elif freq == 3:
+                priority['high'].append(item)
+            elif freq == 2:
+                priority['medium'].append(item)
+            else:
+                priority['low'].append(item)
+            
+            rank += 1
+            if rank > 20:  # Limit to top 20
+                break
         
         return priority
     

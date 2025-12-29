@@ -72,10 +72,11 @@ class GenericPaperUploadView(FormView):
         return subject
     
     def get_success_url(self):
-        # Redirect to subject detail page to show progress
+        # Redirect to public processing page (no login required)
         if hasattr(self, '_subject') and self._subject:
-            return reverse_lazy('subjects:detail', kwargs={'pk': self._subject.pk})
-        return reverse_lazy('subjects:list')
+            # For guest users, redirect to a public processing view
+            return reverse_lazy('papers:processing_status', kwargs={'subject_pk': self._subject.pk})
+        return reverse_lazy('papers:upload_generic')
     
     def post(self, request, *args, **kwargs):
         """Handle file upload with university type and syllabus."""
@@ -295,3 +296,40 @@ class PaperDeleteView(LoginRequiredMixin, DeleteView):
     def form_valid(self, form):
         messages.success(self.request, f'Paper "{self.object.title}" deleted.')
         return super().form_valid(form)
+
+
+class PublicProcessingStatusView(DetailView):
+    """
+    Public view for guest users to track paper processing.
+    No login required - accessible via subject ID only.
+    """
+    
+    model = Subject
+    template_name = 'papers/processing_status.html'
+    context_object_name = 'subject'
+    pk_url_kwarg = 'subject_pk'
+    
+    def get_queryset(self):
+        # Allow any subject to be viewed (public access)
+        return Subject.objects.prefetch_related('modules', 'papers')
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        
+        # Get paper processing status counts
+        papers = self.object.papers.all()
+        context['papers_pending'] = papers.filter(status='pending').count()
+        context['papers_processing'] = papers.filter(status='processing').count()
+        context['papers_completed'] = papers.filter(status='completed').count()
+        context['papers_failed'] = papers.filter(status='failed').count()
+        context['papers_total'] = papers.count()
+        context['questions_count'] = sum(p.get_question_count() for p in papers)
+        
+        # Check if any papers are being processed
+        context['has_processing'] = context['papers_processing'] > 0
+        context['has_pending'] = context['papers_pending'] > 0
+        
+        # Pass user authentication status
+        context['is_guest'] = not self.request.user.is_authenticated
+        
+        return context

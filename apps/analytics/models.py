@@ -11,11 +11,11 @@ class TopicCluster(BaseModel):
     Used for repetition analysis and priority assignment.
     """
     
-    class PriorityTier(models.TextChoices):
-        TIER_1 = 'tier_1', 'Top Priority (4+ exams)'
-        TIER_2 = 'tier_2', 'High Priority (3 exams)'
-        TIER_3 = 'tier_3', 'Medium Priority (2 exams)'
-        TIER_4 = 'tier_4', 'Low Priority (1 exam)'
+    class PriorityTier(models.IntegerChoices):
+        TIER_1 = 1, 'Top Priority (4+ exams)'
+        TIER_2 = 2, 'High Priority (3 exams)'
+        TIER_3 = 3, 'Medium Priority (2 exams)'
+        TIER_4 = 4, 'Low Priority (1 exam)'
     
     subject = models.ForeignKey(
         'subjects.Subject',
@@ -50,11 +50,14 @@ class TopicCluster(BaseModel):
     question_count = models.PositiveIntegerField(default=0, help_text='Total number of questions in this cluster')
     
     # Priority tier (calculated from frequency_count)
-    priority_tier = models.CharField(
-        max_length=10,
+    priority_tier = models.IntegerField(
         choices=PriorityTier.choices,
-        default=PriorityTier.TIER_4
+        default=PriorityTier.TIER_4,
+        help_text='1=Top, 2=High, 3=Medium, 4=Low'
     )
+    
+    # Cluster identifier from clustering algorithm
+    cluster_id = models.CharField(max_length=100, blank=True, help_text='Cluster ID from algorithm')
     
     # Part distribution (how many times in Part A vs Part B)
     part_a_count = models.PositiveIntegerField(default=0)

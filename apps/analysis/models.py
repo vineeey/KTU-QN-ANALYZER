@@ -10,6 +10,7 @@ class AnalysisJob(BaseModel):
         QUEUED = 'queued', 'Queued'
         EXTRACTING = 'extracting', 'Extracting Questions'
         CLASSIFYING = 'classifying', 'Classifying'
+        ANALYZING = 'analyzing', 'Analyzing'
         EMBEDDING = 'embedding', 'Generating Embeddings'
         DETECTING = 'detecting', 'Detecting Duplicates'
         COMPLETED = 'completed', 'Completed'

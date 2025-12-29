@@ -70,74 +70,8 @@ class ModuleReportGenerator:
             
             # Custom CSS for better formatting
             css_str = """
-            @page {
-                size: A4;
-                margin: 2cm;
-            }
-            body {
-                font-family: 'DejaVu Sans', Arial, sans-serif;
-                font-size: 11pt;
-                line-height: 1.6;
-            }
-            h1 {
-                color: #2c3e50;
-                font-size: 24pt;
-                margin-bottom: 10px;
-            }
-            h2 {
-                color: #34495e;
-                font-size: 18pt;
-                margin-top: 20px;
-                border-bottom: 2px solid #3498db;
-                padding-bottom: 5px;
-            }
-            h3 {
-                color: #7f8c8d;
-                font-size: 14pt;
-                margin-top: 15px;
-            }
-            .priority-tier-1 {
-                background-color: #e74c3c;
-                color: white;
-                padding: 2px 8px;
-                border-radius: 3px;
-                font-weight: bold;
-            }
-            .priority-tier-2 {
-                background-color: #e67e22;
-                color: white;
-                padding: 2px 8px;
-                border-radius: 3px;
-                font-weight: bold;
-            }
-            .priority-tier-3 {
-                background-color: #f39c12;
-                color: white;
-                padding: 2px 8px;
-                border-radius: 3px;
-                font-weight: bold;
-            }
-            .priority-tier-4 {
-                background-color: #95a5a6;
-                color: white;
-                padding: 2px 8px;
-                border-radius: 3px;
-            }
-            .question-block {
-                margin-left: 20px;
-                margin-bottom: 10px;
-            }
-            .year-label {
-                font-weight: bold;
-                color: #3498db;
-            }
-            .marks {
-                color: #27ae60;
-                font-style: italic;
-            }
-            ul {
-                margin-left: 20px;
-            }
+            @page { size: A4; margin: 2cm; }
+            body { font-family: 'DejaVu Sans', Arial, sans-serif; font-size: 11pt; line-height: 1.6; }
             """
             
             HTML(string=html_content).write_pdf(
@@ -163,32 +97,43 @@ class ModuleReportGenerator:
         questions = Question.objects.filter(
             module=module
         ).select_related('paper', 'topic_cluster').order_by('paper__year', 'question_number')
-        
-        # Group questions by part and year
-        part_a_by_year = self._group_questions_by_year(questions.filter(part='A'))
-        part_b_by_year = self._group_questions_by_year(questions.filter(part='B'))
-        
+
+        part_a_questions = questions.filter(part='A')
+        part_b_questions = questions.filter(part='B')
+
+        # Group questions by part and year (display is still year-tagged inside a module)
+        part_a_by_year = self._group_questions_by_year(part_a_questions)
+        part_b_by_year = self._group_questions_by_year(part_b_questions)
+
+        # Track which question numbers map to this module for display in headers
+        part_a_numbers = sorted({q.question_number for q in part_a_questions if q.question_number})
+        part_b_numbers = sorted({q.question_number for q in part_b_questions if q.question_number})
+
         # Get topic clusters with priority tiers
         topic_clusters = TopicCluster.objects.filter(
             module=module
         ).order_by('-frequency_count', 'topic_name')
-        
-        # Group topics by priority tier
+
+        # Group topics by priority tier using frequency thresholds
         topics_by_tier = self._group_topics_by_tier(topic_clusters)
-        
+
         # Create study priority order (sorted list)
         study_priority = self._create_study_priority_order(topic_clusters)
-        
+        study_order_by_tier = self._group_priority_order_by_tier(study_priority)
+
         return {
             'subject': self.subject,
             'module': module,
             'part_a_by_year': part_a_by_year,
             'part_b_by_year': part_b_by_year,
+            'part_a_numbers': part_a_numbers,
+            'part_b_numbers': part_b_numbers,
             'topics_by_tier': topics_by_tier,
             'study_priority': study_priority,
+            'study_order_by_tier': study_order_by_tier,
             'total_questions': questions.count(),
-            'total_part_a': questions.filter(part='A').count(),
-            'total_part_b': questions.filter(part='B').count(),
+            'total_part_a': part_a_questions.count(),
+            'total_part_b': part_b_questions.count(),
         }
     
     def _group_questions_by_year(self, questions) -> Dict[str, List[Question]]:
@@ -200,18 +145,26 @@ class ModuleReportGenerator:
         return dict(sorted(grouped.items()))
     
     def _group_topics_by_tier(self, topic_clusters) -> Dict[str, List[TopicCluster]]:
-        """Group topic clusters by priority tier."""
+        """Group topic clusters by frequency-based priority tier."""
         grouped = defaultdict(list)
+
         for cluster in topic_clusters:
-            tier_label = cluster.get_tier_label()
+            freq = cluster.frequency_count or 0
+            if freq >= 4:
+                tier_label = 'Top Priority'
+            elif freq == 3:
+                tier_label = 'High Priority'
+            elif freq == 2:
+                tier_label = 'Medium Priority'
+            else:
+                tier_label = 'Low Priority'
+
             grouped[tier_label].append(cluster)
-        
-        # Return in order: Top -> High -> Medium -> Low
+
         tier_order = ['Top Priority', 'High Priority', 'Medium Priority', 'Low Priority']
         result = {}
         for tier in tier_order:
-            if tier in grouped:
-                result[tier] = grouped[tier]
+            result[tier] = grouped.get(tier, [])
         return result
     
     def _create_study_priority_order(self, topic_clusters) -> List[Dict[str, Any]]:
@@ -227,13 +180,13 @@ class ModuleReportGenerator:
             years = ', '.join(cluster.years_appeared) if cluster.years_appeared else 'N/A'
             
             if freq >= 4:
-                recommendation = f"**MUST STUDY** - Appeared {freq} times. Extremely high probability."
+                recommendation = f"Must learn first — appeared {freq} times."
             elif freq == 3:
-                recommendation = f"High importance - Appeared {freq} times. Strong preparation recommended."
+                recommendation = f"Strongly prepare — appeared {freq} times."
             elif freq == 2:
-                recommendation = f"Moderate importance - Appeared {freq} times. Good to prepare."
+                recommendation = f"Prepare next — appeared {freq} times."
             else:
-                recommendation = f"Low priority - Appeared {freq} time. Study if time permits."
+                recommendation = f"Optional — appeared {freq} time."
             
             priority_order.append({
                 'rank': rank,
@@ -247,6 +200,28 @@ class ModuleReportGenerator:
             })
         
         return priority_order
+
+    def _group_priority_order_by_tier(self, priority_order: List[Dict[str, Any]]) -> Dict[str, List[Dict[str, Any]]]:
+        """Bucket study priority items by tier label for final study order display."""
+        grouped = {
+            'tier_1': [],
+            'tier_2': [],
+            'tier_3': [],
+            'tier_4': [],
+        }
+
+        for item in priority_order:
+            tier = item.get('tier')
+            if tier == 'Top Priority':
+                grouped['tier_1'].append(item)
+            elif tier == 'High Priority':
+                grouped['tier_2'].append(item)
+            elif tier == 'Medium Priority':
+                grouped['tier_3'].append(item)
+            else:
+                grouped['tier_4'].append(item)
+
+        return grouped
 
 
 def generate_module_reports(subject: Subject) -> Dict[int, Optional[str]]:

@@ -14,6 +14,14 @@ from .module_report_generator import ModuleReportGenerator
 from .ktu_report_generator import KTUModuleReportGenerator
 
 
+class PublicReportMixin:
+    """Mixin for public report generation (no login required)."""
+    
+    def get_subject(self, subject_pk):
+        """Get subject without user requirement."""
+        return get_object_or_404(Subject, pk=subject_pk)
+
+
 class ReportsListView(LoginRequiredMixin, TemplateView):
     """List available reports for a subject."""
     
@@ -65,43 +73,72 @@ class GenerateAllModuleReportsView(LoginRequiredMixin, View):
             Subject, pk=subject_pk, user=request.user
         )
         
-        # Use KTU report generator
-        generator = KTUModuleReportGenerator(subject)
-        results = generator.generate_all_module_reports()
-        
-        # Create a ZIP file with all module PDFs
-        successful_pdfs = []
-        for module_num, pdf_path in results.items():
-            if pdf_path and Path(pdf_path).exists():
-                successful_pdfs.append((module_num, pdf_path))
-        
-        if not successful_pdfs:
-            messages.error(request, "No reports could be generated")
-            raise Http404("Report generation failed")
-        
-        # If only one report, return it directly
-        if len(successful_pdfs) == 1:
-            module_num, pdf_path = successful_pdfs[0]
+        return self._generate_reports(subject)
+    
+    def _generate_reports(self, subject):
+        """Shared report generation logic."""
+        try:
+            # Use KTU report generator
+            generator = KTUModuleReportGenerator(subject)
+            results = generator.generate_all_module_reports()
+            
+            # Create a ZIP file with all module PDFs
+            successful_pdfs = []
+            for module_num, pdf_path in results.items():
+                if pdf_path and Path(pdf_path).exists():
+                    successful_pdfs.append((module_num, pdf_path))
+            
+            if not successful_pdfs:
+                # Log more details about the failure
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.error(f"No successful PDFs generated for subject {subject.id}")
+                logger.error(f"Results: {results}")
+                
+                # Check if there are any questions
+                from apps.questions.models import Question
+                q_count = Question.objects.filter(paper__subject=subject).count()
+                logger.error(f"Question count: {q_count}")
+                
+                raise Http404(f"No reports could be generated. Questions found: {q_count}")
+            
+            # If only one report, return it directly
+            if len(successful_pdfs) == 1:
+                module_num, pdf_path = successful_pdfs[0]
+                return FileResponse(
+                    open(pdf_path, 'rb'),
+                    content_type='application/pdf',
+                    as_attachment=True,
+                    filename=f"Module_{module_num}_{subject.code or subject.name.replace(' ', '_')}.pdf"
+                )
+            
+            # Create ZIP file with all reports
+            zip_path = tempfile.mktemp(suffix='.zip')
+            with zipfile.ZipFile(zip_path, 'w') as zf:
+                for module_num, pdf_path in successful_pdfs:
+                    filename = f"Module_{module_num}_{subject.code or subject.name.replace(' ', '_')}.pdf"
+                    zf.write(pdf_path, filename)
+            
             return FileResponse(
-                open(pdf_path, 'rb'),
-                content_type='application/pdf',
+                open(zip_path, 'rb'),
+                content_type='application/zip',
                 as_attachment=True,
-                filename=f"Module_{module_num}_{subject.code or subject.name.replace(' ', '_')}.pdf"
+                filename=f"{subject.code or subject.name.replace(' ', '_')}_All_Modules.zip"
             )
-        
-        # Create ZIP file with all reports
-        zip_path = tempfile.mktemp(suffix='.zip')
-        with zipfile.ZipFile(zip_path, 'w') as zf:
-            for module_num, pdf_path in successful_pdfs:
-                filename = f"Module_{module_num}_{subject.code or subject.name.replace(' ', '_')}.pdf"
-                zf.write(pdf_path, filename)
-        
-        return FileResponse(
-            open(zip_path, 'rb'),
-            content_type='application/zip',
-            as_attachment=True,
-            filename=f"{subject.code or subject.name.replace(' ', '_')}_All_Modules.zip"
-        )
+        except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.exception(f"Report generation failed: {e}")
+            raise Http404(f"Report generation error: {str(e)}")
+
+
+class PublicGenerateAllModuleReportsView(PublicReportMixin, View):
+    """Public version - Generate reports for all modules (no login required)."""
+    
+    def get(self, request, subject_pk):
+        subject = self.get_subject(subject_pk)
+        view = GenerateAllModuleReportsView()
+        return view._generate_reports(subject)
 
 
 class GenerateAnalyticsReportView(LoginRequiredMixin, View):
@@ -112,6 +149,10 @@ class GenerateAnalyticsReportView(LoginRequiredMixin, View):
             Subject, pk=subject_pk, user=request.user
         )
         
+        return self._generate_analytics(subject)
+    
+    def _generate_analytics(self, subject):
+        """Shared analytics generation logic."""
         generator = ReportGenerator(subject)
         pdf_path = generator.generate_analytics_report()
         
@@ -123,5 +164,13 @@ class GenerateAnalyticsReportView(LoginRequiredMixin, View):
                 filename=f'{subject.code or subject.name}_analytics_report.pdf'
             )
         
-        messages.error(request, "Failed to generate analytics report")
-        raise Http404("Report generation failed")
+        raise Http404("Analytics report generation failed")
+
+
+class PublicGenerateAnalyticsReportView(PublicReportMixin, View):
+    """Public version - Generate analytics report (no login required)."""
+    
+    def get(self, request, subject_pk):
+        subject = self.get_subject(subject_pk)
+        view = GenerateAnalyticsReportView()
+        return view._generate_analytics(subject)

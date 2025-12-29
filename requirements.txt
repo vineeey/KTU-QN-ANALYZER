@@ -24,14 +24,17 @@ Pillow>=10.2.0
 # PDF Report Generation
 WeasyPrint>=60.2
 Jinja2>=3.1.2
+reportlab>=4.0.0
 
-# NLP
+# NLP & Clustering
 nltk>=3.8.1
+hdbscan>=0.8.33
 
 # Utilities
 python-magic>=0.4.27
 numpy>=1.26.3
 scikit-learn>=1.4.0
+scipy>=1.11.4
 
 # Development
 django-debug-toolbar>=4.2.0

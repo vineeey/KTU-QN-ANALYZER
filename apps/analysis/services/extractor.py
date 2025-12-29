@@ -3,6 +3,7 @@ PDF text extraction service.
 """
 import logging
 import re
+import io
 from typing import List, Dict, Any
 from pathlib import Path
 
@@ -15,6 +16,7 @@ class QuestionExtractor:
     def __init__(self):
         self.pdfplumber = None
         self.fitz = None
+        self.pytesseract = None
         self._load_libraries()
     
     def _load_libraries(self):
@@ -30,6 +32,12 @@ class QuestionExtractor:
             self.fitz = fitz
         except ImportError:
             logger.warning("PyMuPDF not available")
+
+        try:
+            import pytesseract
+            self.pytesseract = pytesseract
+        except ImportError:
+            logger.warning("pytesseract not available - OCR fallback disabled")
     
     def extract_text(self, pdf_path: str) -> str:
         """Extract all text from a PDF file."""
@@ -54,6 +62,28 @@ class QuestionExtractor:
                 doc.close()
             except Exception as e:
                 logger.error(f"PyMuPDF extraction failed: {e}")
+
+        # OCR fallback if still empty
+        if not text_parts and self.fitz and self.pytesseract:
+            try:
+                from PIL import Image
+            except ImportError:
+                Image = None
+                logger.warning("Pillow not available - cannot OCR images")
+
+            if Image:
+                try:
+                    doc = self.fitz.open(pdf_path)
+                    for page in doc:
+                        pix = page.get_pixmap(matrix=self.fitz.Matrix(2, 2))
+                        img = Image.open(io.BytesIO(pix.tobytes("png")))
+                        text = self.pytesseract.image_to_string(img)
+                        if text:
+                            text_parts.append(text)
+                    doc.close()
+                    logger.info("OCR fallback extraction completed")
+                except Exception as e:
+                    logger.error(f"OCR extraction failed: {e}")
         
         return '\n'.join(text_parts)
     

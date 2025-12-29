@@ -1,0 +1,35 @@
+{% extends 'base/base.html' %}
+
+{% block title %}Profile - PYQ Analyzer{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 py-12 px-4">
+  <div class="max-w-2xl mx-auto">
+    <div class="bg-white rounded-2xl shadow-2xl p-8">
+      <div class="flex items-start justify-between gap-4">
+        <div>
+          <h1 class="text-3xl font-bold text-gray-900">Profile</h1>
+          <p class="mt-1 text-sm text-gray-600">Manage your account details</p>
+        </div>
+        <a href="{% url 'users:profile_edit' %}" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-semibold">Edit</a>
+      </div>
+
+      <div class="mt-8 space-y-4">
+        <div class="bg-gray-50 border border-gray-200 rounded-lg p-4">
+          <p class="text-xs text-gray-500">Name</p>
+          <p class="text-base font-semibold text-gray-900">{{ user.get_display_name|default:user.email }}</p>
+        </div>
+        <div class="bg-gray-50 border border-gray-200 rounded-lg p-4">
+          <p class="text-xs text-gray-500">Email</p>
+          <p class="text-base font-semibold text-gray-900">{{ user.email }}</p>
+        </div>
+      </div>
+
+      <div class="mt-8 flex gap-3">
+        <a href="{% url 'core:dashboard' %}" class="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 py-3 rounded-lg font-semibold text-center">Back to Dashboard</a>
+        <a href="{% url 'users:logout' %}" class="flex-1 bg-red-600 hover:bg-red-700 text-white py-3 rounded-lg font-semibold text-center">Logout</a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

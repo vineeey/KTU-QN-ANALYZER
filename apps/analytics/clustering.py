@@ -5,7 +5,7 @@ Uses sentence transformers for semantic similarity to group questions by meaning
 import logging
 import re
 from typing import List, Dict, Any, Optional, Tuple
-from collections import defaultdict
+from collections import defaultdict, Counter
 from django.db import transaction
 
 try:
@@ -14,6 +14,14 @@ try:
 except ImportError:
     SENTENCE_TRANSFORMERS_AVAILABLE = False
     logging.warning("sentence-transformers not available, using fallback clustering")
+
+try:
+    from sklearn.cluster import AgglomerativeClustering
+    from sklearn.metrics.pairwise import cosine_distances
+    SKLEARN_AVAILABLE = True
+except Exception:
+    SKLEARN_AVAILABLE = False
+    logging.warning("scikit-learn not available, using greedy clustering")
 
 from apps.questions.models import Question
 from apps.subjects.models import Subject, Module
@@ -31,13 +39,14 @@ class TopicClusteringService:
     def __init__(
         self,
         subject: Subject,
-        similarity_threshold: float = 0.75,  # Higher threshold for semantic similarity
+        similarity_threshold: float = 0.55,  # Lower threshold for broader topic grouping
         tier_1_threshold: int = 4,  # Top Priority: 4+ times
         tier_2_threshold: int = 3,  # High Priority: 3 times
         tier_3_threshold: int = 2   # Medium Priority: 2 times
     ):
         self.subject = subject
         self.similarity_threshold = similarity_threshold
+        self.same_question_threshold = 0.80  # same question band
         self.tier_1_threshold = tier_1_threshold
         self.tier_2_threshold = tier_2_threshold
         self.tier_3_threshold = tier_3_threshold
@@ -129,50 +138,76 @@ class TopicClusteringService:
     
     def _cluster_with_ai(self, module: Optional[Module], questions: List[Question]) -> Tuple[int, int]:
         """Cluster using sentence transformers (AI semantic similarity)."""
-        # Extract and clean question texts
-        question_texts = [self._clean_question_text(q.text) for q in questions]
-        
-        # Generate embeddings
+        # IMPORTANT: embed only normalized topic phrases, not raw OCR text
+        key_terms = self._build_module_key_terms(questions)
+        topic_phrases = [self._extract_topic_phrase(q.text, key_terms) for q in questions]
+
         logger.info("🤖 Generating AI embeddings...")
-        embeddings = self.model.encode(question_texts, convert_to_tensor=False, show_progress_bar=False)
-        
-        # Calculate similarity and cluster
+        embeddings = self.model.encode(topic_phrases, convert_to_tensor=False, show_progress_bar=False)
+
         clusters = []
-        processed = set()
-        
-        for i, question in enumerate(questions):
-            if i in processed:
-                continue
-            
-            cluster_indices = [i]
-            processed.add(i)
-            
-            # Find similar questions using cosine similarity
-            for j in range(len(questions)):
-                if j in processed or i == j:
+
+        if SKLEARN_AVAILABLE and len(questions) > 1:
+            try:
+                dist_matrix = cosine_distances(embeddings)
+                # distance_threshold = 1 - topic threshold (0.65)
+                cluster_kwargs = {
+                    'n_clusters': None,
+                    'linkage': 'average',
+                    'distance_threshold': 1 - self.similarity_threshold
+                }
+                try:
+                    # Newer sklearn expects metric instead of affinity
+                    clustering = AgglomerativeClustering(metric='precomputed', **cluster_kwargs)
+                except TypeError:
+                    # Older sklearn uses affinity
+                    clustering = AgglomerativeClustering(affinity='precomputed', **cluster_kwargs)
+
+                labels = clustering.fit_predict(dist_matrix)
+
+                label_to_indices = defaultdict(list)
+                for idx, label in enumerate(labels):
+                    label_to_indices[label].append(idx)
+
+                for idxs in label_to_indices.values():
+                    cluster_questions = [questions[i] for i in idxs]
+                    clusters.append({
+                        'representative': cluster_questions[0],
+                        'questions': cluster_questions
+                    })
+                logger.info(f"✅ Created {len(clusters)} clusters via Agglomerative")
+            except Exception as e:
+                logger.warning(f"Agglomerative clustering failed, falling back to greedy: {e}")
+
+        if not clusters:
+            # Greedy fallback using cosine with thresholds
+            processed = set()
+            for i, question in enumerate(questions):
+                if i in processed:
                     continue
-                
-                # Manual cosine similarity (avoid numpy)
-                similarity = self._cosine_similarity(embeddings[i], embeddings[j])
-                
-                if similarity >= self.similarity_threshold:
-                    cluster_indices.append(j)
-                    processed.add(j)
-            
-            cluster_questions = [questions[idx] for idx in cluster_indices]
-            clusters.append({
-                'representative': cluster_questions[0],
-                'questions': cluster_questions
-            })
-        
-        logger.info(f"✅ Created {len(clusters)} AI-powered clusters")
-        
-        # Save to database
+                cluster_indices = [i]
+                processed.add(i)
+                for j in range(len(questions)):
+                    if j in processed or i == j:
+                        continue
+                    similarity = self._cosine_similarity(embeddings[i], embeddings[j])
+                    if similarity >= self.similarity_threshold:  # topic band
+                        cluster_indices.append(j)
+                        processed.add(j)
+                cluster_questions = [questions[idx] for idx in cluster_indices]
+                clusters.append({
+                    'representative': cluster_questions[0],
+                    'questions': cluster_questions
+                })
+            logger.info(f"✅ Created {len(clusters)} clusters via greedy fallback")
+
         return self._save_clusters(module, clusters)
     
     def _cluster_with_keywords(self, module: Optional[Module], questions: List[Question]) -> Tuple[int, int]:
         """Enhanced keyword-based clustering (fallback when AI unavailable)."""
         logger.info("📊 Using enhanced keyword clustering...")
+
+        key_terms = self._build_module_key_terms(questions)
         
         clusters = []
         processed = set()
@@ -185,14 +220,16 @@ class TopicClusteringService:
             processed.add(i)
             
             # Get keywords for this question
-            keywords1 = self._extract_keywords(question.text)
+            topic_text_1 = self._extract_topic_phrase(question.text, key_terms)
+            keywords1 = self._extract_keywords(topic_text_1)
             
             # Find similar questions by keyword overlap
             for j in range(len(questions)):
                 if j in processed or i == j:
                     continue
                 
-                keywords2 = self._extract_keywords(questions[j].text)
+                topic_text_2 = self._extract_topic_phrase(questions[j].text, key_terms)
+                keywords2 = self._extract_keywords(topic_text_2)
                 similarity = self._keyword_similarity(keywords1, keywords2)
                 
                 if similarity >= self.similarity_threshold:
@@ -221,8 +258,8 @@ class TopicClusteringService:
         return dot_product / (magnitude1 * magnitude2)
     
     def _extract_keywords(self, text: str) -> set:
-        """Extract meaningful keywords from question text."""
-        text = self._clean_question_text(text).lower()
+        """Extract meaningful keywords from already-normalized topic text."""
+        text = self._normalize_question(text)
         
         # Remove common words
         stopwords = {
@@ -237,14 +274,24 @@ class TopicClusteringService:
         return keywords
     
     def _keyword_similarity(self, keywords1: set, keywords2: set) -> float:
-        """Calculate Jaccard similarity between keyword sets."""
+        """Calculate Jaccard similarity between keyword sets with boost for high overlap."""
         if not keywords1 or not keywords2:
             return 0.0
         
         intersection = keywords1.intersection(keywords2)
         union = keywords1.union(keywords2)
         
-        return len(intersection) / len(union) if union else 0.0
+        # Base Jaccard similarity
+        base_similarity = len(intersection) / len(union) if union else 0.0
+        
+        # Boost similarity if there's significant overlap (helps group reworded questions)
+        overlap_ratio = len(intersection) / min(len(keywords1), len(keywords2)) if keywords1 and keywords2 else 0.0
+        
+        # If >60% of keywords overlap, boost the similarity
+        if overlap_ratio > 0.6:
+            return min(1.0, base_similarity * 1.3)
+        
+        return base_similarity
     
     def _save_clusters(self, module: Optional[Module], clusters: List[Dict]) -> Tuple[int, int]:
         """Save clusters to database."""
@@ -260,14 +307,100 @@ class TopicClusteringService:
         
         return created_count, questions_clustered
     
-    def _clean_question_text(self, text: str) -> str:
-        """Clean question text for better semantic matching."""
-        # Remove question numbers, marks, years
-        text = re.sub(r'\(\d+\s*marks?\)', '', text, flags=re.IGNORECASE)
-        text = re.sub(r'\b(20\d{2})\b', '', text)  # Remove years
-        text = re.sub(r'^[Qq]\s*\d+[a-z]?\s*[:.)\-]?\s*', '', text)  # Remove Q1, Q2, etc.
-        text = re.sub(r'\s+', ' ', text).strip()  # Normalize whitespace
-        return text
+    def _normalize_question(self, text: str) -> str:
+        """
+        Normalize OCR/PDF text BEFORE embeddings.
+        Goal: stable similarity even with noisy extraction.
+        """
+        if not text:
+            return ''
+
+        text = text.lower()
+
+        # Drop marks, years, question numbering
+        text = re.sub(r'\(\s*\d+\s*marks?\s*\)', ' ', text, flags=re.IGNORECASE)
+        text = re.sub(r'\b20\d{2}\b', ' ', text)
+        text = re.sub(r'^[q]\s*\d+[a-z]?\s*[:.)\-]?\s*', ' ', text, flags=re.IGNORECASE)
+
+        # Replace all non-alnum with spaces (kills OCR garbage like € : ; | etc.)
+        text = re.sub(r'[^a-z0-9\s]', ' ', text)
+
+        # Fix common OCR splits: "warm ing" -> "warming" (only when tail fragment is NOT a real word)
+        protected = {
+            'of', 'to', 'in', 'on', 'at', 'by', 'an', 'as', 'or', 'and', 'the', 'for', 'with',
+        }
+
+        def _join_ocr_split(match: re.Match) -> str:
+            head = match.group(1)
+            tail = match.group(2)
+            if tail in protected:
+                return f"{head} {tail}"
+            return f"{head}{tail}"
+
+        text = re.sub(r'\b([a-z]{3,})\s+([a-z]{1,3})\b', _join_ocr_split, text)
+
+        # Remove filler exam verbs/phrases (do NOT affect display; only embeddings)
+        remove_phrases = [
+            'explain', 'define', 'discuss', 'describe', 'state', 'list', 'enumerate',
+            'briefly', 'in detail', 'with diagram', 'with neat diagram', 'with example',
+            'what is', 'what are', 'write short note on', 'write a note on',
+        ]
+        for phrase in remove_phrases:
+            text = text.replace(phrase, ' ')
+
+        # Collapse whitespace and drop single-letter tokens
+        text = re.sub(r'\s+', ' ', text).strip()
+        tokens = [t for t in text.split() if len(t) > 1]
+        return ' '.join(tokens)
+
+    def _build_module_key_terms(self, questions: List[Question]) -> List[str]:
+        """Derive common 2-4 word phrases within this module to stabilize topic-phrase extraction."""
+        phrase_counts: Counter[str] = Counter()
+
+        for q in questions:
+            normalized = self._normalize_question(q.text)
+            tokens = normalized.split()
+            # Build n-grams (2..4) from meaningful tokens
+            tokens = [t for t in tokens if len(t) > 2]
+            for n in (2, 3, 4):
+                for i in range(0, max(0, len(tokens) - n + 1)):
+                    phrase = ' '.join(tokens[i:i + n])
+                    phrase_counts[phrase] += 1
+
+        # Keep phrases that appear at least twice (likely true topics)
+        candidates = [p for p, c in phrase_counts.items() if c >= 2]
+        candidates.sort(key=lambda p: (-phrase_counts[p], -len(p)))
+        return candidates[:80]
+
+    def _extract_topic_phrase(self, text: str, key_terms: List[str]) -> str:
+        """
+        Extract a topic phrase for embedding.
+        - Prefer repeated phrases in this module (key_terms)
+        - Fallback: first 5 words of normalized text
+        """
+        normalized = self._normalize_question(text)
+        if not normalized:
+            return ''
+
+        # Prefer most frequent phrases in this module (key_terms are pre-sorted by frequency)
+        for term in key_terms:
+            if term and term in normalized:
+                return self._strip_phrase_edges(term)
+
+        return self._strip_phrase_edges(' '.join(normalized.split()[:5]))
+
+    def _strip_phrase_edges(self, phrase: str) -> str:
+        """Trim edge stopwords from a topic phrase (keeps the core concept stable)."""
+        if not phrase:
+            return ''
+
+        stop = {'and', 'or', 'of', 'to', 'in', 'on', 'for', 'with', 'from', 'by', 'the', 'a', 'an'}
+        parts = [p for p in phrase.split() if p]
+        while parts and parts[0] in stop:
+            parts.pop(0)
+        while parts and parts[-1] in stop:
+            parts.pop()
+        return ' '.join(parts)
     
     def _are_similar(self, q1: Question, q2: Question) -> bool:
         """
@@ -337,44 +470,48 @@ class TopicClusteringService:
     
     def _extract_topic_name(self, question: Question) -> str:
         """
-        Extract a meaningful topic name from a question using key phrases.
+        Extract a CANONICAL topic name - core concept only, no action verbs.
+        Multiple questions about the same topic MUST get the same name.
         """
         text = question.text
         
-        # Remove action verbs at start
-        text = re.sub(r'^(explain|define|describe|discuss|what|how|why|list|enumerate|state|elaborate|illustrate|classify|compare|differentiate|mention|identify|briefly)\s+', '', text, flags=re.IGNORECASE)
-        
-        # Remove marks notation
+        # Remove marks notation first
         text = re.sub(r'\(\s*\d+\s*marks?\s*\)', '', text, flags=re.IGNORECASE)
         
-        # Take first meaningful part (up to 80 chars or first major punctuation)
+        # Remove ALL action verbs (expanded list)
+        action_verbs = r'^(explain|define|describe|discuss|what|how|why|list|enumerate|state|elaborate|illustrate|classify|compare|differentiate|contrast|distinguish|mention|identify|briefly|detail|outline|summarize|evaluate|analyze|analyse|examine|comment|write|give|draw|show|demonstrate|calculate|derive|prove|determine|find|compute|verify|check)\s+'
+        text = re.sub(action_verbs, '', text, flags=re.IGNORECASE)
+        
+        # Remove filler phrases
+        text = re.sub(r'\b(with\s+(the\s+)?(help\s+of\s+)?(a\s+)?(suitable\s+)?(neat\s+)?(labelled\s+)?(diagram|example|sketch|graph))\b', '', text, flags=re.IGNORECASE)
+        text = re.sub(r'\b(in\s+detail|briefly)\b', '', text, flags=re.IGNORECASE)
+        
+        # Take first sentence or clause
         if '.' in text[:100]:
             text = text.split('.')[0]
         elif '?' in text[:100]:
             text = text.split('?')[0]
         
-        text = text[:80].strip()
+        # Remove common articles and prepositions from start
+        text = re.sub(r'^(the|a|an)\s+', '', text, flags=re.IGNORECASE)
         
-        # Capitalize properly
-        text = ' '.join(word.capitalize() if len(word) > 3 else word.lower() for word in text.split())
+        # Truncate to core concept (max 60 chars)
+        text = text[:60].strip()
+        
+        # Clean whitespace
+        text = re.sub(r'\s+', ' ', text)
+        
+        # Capitalize properly - title case for main words
+        words = text.split()
+        capitalized = []
+        for word in words:
+            if len(word) > 3 or word.lower() in ['ktu', 'co2', 'ph', 'gis']:
+                capitalized.append(word.capitalize())
+            else:
+                capitalized.append(word.lower())
+        text = ' '.join(capitalized)
         
         return text if text else question.text[:50]
-        if '?' in text:
-            text = text.split('?')[0]
-        elif '.' in text:
-            sentences = text.split('.')
-            text = sentences[0] if len(sentences[0]) < 100 else sentences[0][:100]
-        else:
-            text = text[:100]
-        
-        # Capitalize first letter
-        text = text.strip().capitalize()
-        
-        # If too long, truncate and add ellipsis
-        if len(text) > 80:
-            text = text[:77] + '...'
-        
-        return text
     
     def _create_topic_cluster(self, module: Optional[Module], cluster_data: Dict[str, Any]):
         """
@@ -382,13 +519,21 @@ class TopicClusteringService:
         """
         representative = cluster_data['representative']
         questions = cluster_data['questions']
-        
-        # Extract meaningful topic name
-        topic_name = self._extract_topic_name(representative)
+
+        # Canonicalize topic name from topic phrases (NOT raw questions)
+        module_key_terms = self._build_module_key_terms(questions)
+        phrases = [self._extract_topic_phrase(q.text, module_key_terms) for q in questions]
+        phrases = [p for p in phrases if p]
+        canonical_phrase = Counter(phrases).most_common(1)[0][0] if phrases else self._normalize_question(representative.text)
+
+        # Pretty name for reports (still derived from canonical phrase)
+        topic_name = ' '.join(w.capitalize() if len(w) > 3 else w.lower() for w in canonical_phrase.split())
         
         # Calculate repetition statistics
         years = set()
         total_marks = 0
+        part_a_count = 0
+        part_b_count = 0
         
         for q in questions:
             # Get unique years
@@ -398,22 +543,29 @@ class TopicClusteringService:
             # Sum marks
             if q.marks:
                 total_marks += q.marks
+
+            # Part split is DISPLAY-ONLY; we still track distribution for info
+            part = getattr(q, 'part', None)
+            if part == 'A':
+                part_a_count += 1
+            elif part == 'B':
+                part_b_count += 1
         
         # Frequency = number of unique years this topic appeared
         frequency_count = len(years)
         
-        # Determine priority tier based on frequency
+        # Determine priority tier based on frequency (use integer values)
         if frequency_count >= self.tier_1_threshold:
-            priority = TopicCluster.PriorityTier.TIER_1  # 🔥🔥🔥 TOP PRIORITY (4+ times)
+            priority = 1  # TOP PRIORITY (4+ times)
         elif frequency_count >= self.tier_2_threshold:
-            priority = TopicCluster.PriorityTier.TIER_2  # 🔥🔥 HIGH PRIORITY (3 times)
+            priority = 2  # HIGH PRIORITY (3 times)
         elif frequency_count >= self.tier_3_threshold:
-            priority = TopicCluster.PriorityTier.TIER_3  # 🔥 MEDIUM PRIORITY (2 times)
+            priority = 3  # MEDIUM PRIORITY (2 times)
         else:
-            priority = TopicCluster.PriorityTier.TIER_4  # ✓ LOW PRIORITY (1 time)
+            priority = 4  # LOW PRIORITY (1 time)
         
         # Create normalized key for deduplication
-        normalized_key = self._clean_question_text(representative.text).lower()
+        normalized_key = canonical_phrase
         
         # Create TopicCluster
         cluster = TopicCluster.objects.create(
@@ -426,7 +578,18 @@ class TopicClusteringService:
             years_appeared=sorted(list(years)),
             total_marks=total_marks,
             priority_tier=priority,
-            question_count=len(questions)
+            question_count=len(questions),
+            part_a_count=part_a_count,
+            part_b_count=part_b_count,
+            cluster_id=normalized_key[:100],
+        )
+
+        # Attach questions to this cluster (Part A/B is display-only; repetition uses cluster years)
+        question_ids = [q.id for q in questions]
+        Question.objects.filter(id__in=question_ids).update(
+            topic_cluster=cluster,
+            repetition_count=frequency_count,
+            years_appeared=sorted(list(years)),
         )
         
         logger.debug(f"Created cluster: {topic_name} ({frequency_count} times, {priority})")
@@ -434,7 +597,7 @@ class TopicClusteringService:
 
 def analyze_subject_topics(
     subject: Subject,
-    similarity_threshold: float = 0.75,  # Higher for AI semantic matching
+    similarity_threshold: float = 0.55,  # Lower threshold for broader topic grouping
     tier_1_threshold: int = 4,  # TOP PRIORITY: 4+ times
     tier_2_threshold: int = 3,  # HIGH PRIORITY: 3 times
     tier_3_threshold: int = 2   # MEDIUM PRIORITY: 2 times
