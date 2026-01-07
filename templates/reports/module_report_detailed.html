@@ -75,12 +75,14 @@
 
             {% if clusters %}
                 {% for c in clusters %}
-                    <div class="priority-item">
-                        <strong>{{ forloop.counter }}. {{ c.topic_name }}</strong><br>
-                        <span class="marks">Appears in: {% if c.years_appeared %}{{ c.years_appeared|join:', ' }}{% else %}N/A{% endif %}</span><br>
-                        <span class="marks">{{ c.representative_text|default:'' }}</span>
-                    </div>
-                {% endfor %}
+                <div class="priority-item">
+                    <strong>{{ forloop.counter }}. {{ c.topic_name }}</strong><br>
+                    <span class="marks">Priority Score: {{ c.priority_score }} | Confidence: {{ c.confidence }}% | Part A: {{ c.part_a_count }} • Part B: {{ c.part_b_count }}</span><br>
+                    <span class="marks">Avg Marks: {{ c.average_marks }} | Frequency (years): {{ c.frequency }}</span><br>
+                    <span class="marks">Appears in: {% if c.years_appeared %}{{ c.years_appeared|join:', ' }}{% else %}N/A{% endif %}</span><br>
+                    <span class="marks">{{ c.representative_text|default:'' }}</span>
+                </div>
+            {% endfor %}
             {% else %}
                 <div class="priority-item">No topics in this tier.</div>
             {% endif %}
