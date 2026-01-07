@@ -16,6 +16,16 @@ from django.conf import settings
 from apps.subjects.models import Subject, Module
 from apps.questions.models import Question
 from apps.analytics.models import TopicCluster
+from .utils import (
+    calculate_average_marks,
+    calculate_confidence,
+    calculate_priority_score,
+    format_priority_details,
+    priority_sort_key,
+    TIER_HIGH_THRESHOLD,
+    TIER_MEDIUM_THRESHOLD,
+    TIER_TOP_THRESHOLD,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -153,41 +163,47 @@ class ModuleReportGenerator:
         return dict(sorted(grouped.items()))
     
     def _group_topics_by_tier(self, topic_clusters, total_years: int) -> Dict[str, List[Dict[str, Any]]]:
-        """Group topic clusters by frequency-based priority tier."""
+        """
+        Group topic clusters by frequency-based priority tier.
+        Returns tier label -> list of metadata dictionaries (with scores and confidence).
+        """
         grouped = defaultdict(list)
 
         for cluster in topic_clusters:
             freq = cluster.frequency_count or 0
-            avg_marks = (cluster.total_marks / cluster.question_count) if cluster.question_count else 0
-            confidence = round((freq / total_years) * 100, 1) if total_years else 0
-            priority_score = round((2 * freq) + avg_marks, 1)
-            if freq >= 4:
+            question_count = cluster.question_count or 0
+            avg_marks = calculate_average_marks(cluster.total_marks, question_count)
+            confidence = calculate_confidence(freq, total_years)
+            priority_score = calculate_priority_score(freq, avg_marks)
+            if freq >= TIER_TOP_THRESHOLD:
                 tier_label = 'Top Priority'
-            elif freq == 3:
+            elif freq == TIER_HIGH_THRESHOLD:
                 tier_label = 'High Priority'
-            elif freq == 2:
+            elif freq == TIER_MEDIUM_THRESHOLD:
                 tier_label = 'Medium Priority'
             else:
                 tier_label = 'Low Priority'
 
-            grouped[tier_label].append({
+            topic_data = {
                 'topic_name': cluster.topic_name,
                 'frequency': freq,
                 'years_appeared': cluster.years_appeared,
                 'representative_text': cluster.representative_text,
-                'average_marks': round(avg_marks, 1),
+                'average_marks': avg_marks,
                 'priority_score': priority_score,
                 'confidence': confidence,
                 'part_a_count': cluster.part_a_count or 0,
                 'part_b_count': cluster.part_b_count or 0,
-            })
+            }
+            topic_data['priority_details'] = format_priority_details(topic_data)
+            grouped[tier_label].append(topic_data)
 
         tier_order = ['Top Priority', 'High Priority', 'Medium Priority', 'Low Priority']
         result = {}
         for tier in tier_order:
             result[tier] = sorted(
                 grouped.get(tier, []),
-                key=lambda item: (-item.get('priority_score', 0), -item.get('frequency', 0), item.get('topic_name', ''))
+                key=priority_sort_key
             )
         return result
 
@@ -202,20 +218,21 @@ class ModuleReportGenerator:
             # Create study recommendation
             freq = cluster.frequency_count
             years = ', '.join(cluster.years_appeared) if cluster.years_appeared else 'N/A'
-            avg_marks = (cluster.total_marks / cluster.question_count) if cluster.question_count else 0
-            priority_score = round((2 * freq) + avg_marks, 1)
-            confidence = round((freq / total_years) * 100, 1) if total_years else 0
+            question_count = cluster.question_count or 0
+            avg_marks = calculate_average_marks(cluster.total_marks, question_count)
+            priority_score = calculate_priority_score(freq, avg_marks)
+            confidence = calculate_confidence(freq, total_years)
 
-            if freq >= 4:
+            if freq >= TIER_TOP_THRESHOLD:
                 recommendation = f"Must learn first — appeared {freq} times."
-            elif freq == 3:
+            elif freq == TIER_HIGH_THRESHOLD:
                 recommendation = f"Strongly prepare — appeared {freq} times."
-            elif freq == 2:
+            elif freq == TIER_MEDIUM_THRESHOLD:
                 recommendation = f"Prepare next — appeared {freq} times."
             else:
                 recommendation = f"Optional — appeared {freq} time."
-            
-            priority_order.append({
+
+            item = {
                 'topic': cluster.topic_name,
                 'frequency': freq,
                 'years': years,
@@ -225,14 +242,14 @@ class ModuleReportGenerator:
                 'representative_text': cluster.representative_text[:200] if cluster.representative_text else '',
                 'priority_score': priority_score,
                 'confidence': confidence,
-                'average_marks': round(avg_marks, 1),
+                'average_marks': avg_marks,
                 'part_a_count': cluster.part_a_count or 0,
                 'part_b_count': cluster.part_b_count or 0,
-            })
+            }
+            item['priority_details'] = format_priority_details(item)
+            priority_order.append(item)
 
-        priority_order.sort(
-            key=lambda item: (-item.get('priority_score', 0), -item.get('frequency', 0), item.get('topic', ''))
-        )
+        priority_order.sort(key=priority_sort_key)
         for idx, item in enumerate(priority_order, 1):
             item['rank'] = idx
 

@@ -17,6 +17,16 @@ from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, PageBreak, 
 from apps.subjects.models import Subject, Module
 from apps.questions.models import Question
 from apps.analytics.models import TopicCluster
+from .utils import (
+    calculate_average_marks,
+    calculate_confidence,
+    format_priority_details,
+    calculate_priority_score,
+    priority_sort_key,
+    TIER_HIGH_THRESHOLD,
+    TIER_MEDIUM_THRESHOLD,
+    TIER_TOP_THRESHOLD,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -272,7 +282,7 @@ class KTUModuleReportGenerator:
             spaceAfter=10,
             textColor=HexColor('#555555')
         )
-        
+
         # TOP PRIORITY
         if data['priority']['top']:
             story.append(Paragraph(
@@ -288,14 +298,7 @@ class KTUModuleReportGenerator:
                     f"Appears in: {item['years']}",
                     years_style
                 ))
-                story.append(Paragraph(
-                    f"Priority Score: {item['priority_score']} • Confidence: {item['confidence']}% • Part A: {item['part_a']} • Part B: {item['part_b']}",
-                    years_style
-                ))
-                story.append(Paragraph(
-                    f"Avg Marks: {item['average_marks']} • Frequency (years): {item['frequency']}",
-                    years_style
-                ))
+                self._append_priority_details(story, item, years_style)
         
         # HIGH PRIORITY
         if data['priority']['high']:
@@ -312,14 +315,7 @@ class KTUModuleReportGenerator:
                     f"Appears in: {item['years']}",
                     years_style
                 ))
-                story.append(Paragraph(
-                    f"Priority Score: {item['priority_score']} • Confidence: {item['confidence']}% • Part A: {item['part_a']} • Part B: {item['part_b']}",
-                    years_style
-                ))
-                story.append(Paragraph(
-                    f"Avg Marks: {item['average_marks']} • Frequency (years): {item['frequency']}",
-                    years_style
-                ))
+                self._append_priority_details(story, item, years_style)
         
         # MEDIUM PRIORITY
         if data['priority']['medium']:
@@ -336,14 +332,7 @@ class KTUModuleReportGenerator:
                     f"Appears in: {item['years']}",
                     years_style
                 ))
-                story.append(Paragraph(
-                    f"Priority Score: {item['priority_score']} • Confidence: {item['confidence']}% • Part A: {item['part_a']} • Part B: {item['part_b']}",
-                    years_style
-                ))
-                story.append(Paragraph(
-                    f"Avg Marks: {item['average_marks']} • Frequency (years): {item['frequency']}",
-                    years_style
-                ))
+                self._append_priority_details(story, item, years_style)
         
         # LOW PRIORITY
         if data['priority']['low']:
@@ -360,14 +349,7 @@ class KTUModuleReportGenerator:
                     f"Appears in: {item['years']}",
                     years_style
                 ))
-                story.append(Paragraph(
-                    f"Priority Score: {item['priority_score']} • Confidence: {item['confidence']}% • Part A: {item['part_a']} • Part B: {item['part_b']}",
-                    years_style
-                ))
-                story.append(Paragraph(
-                    f"Avg Marks: {item['average_marks']} • Frequency (years): {item['frequency']}",
-                    years_style
-                ))
+                self._append_priority_details(story, item, years_style)
         
         # === FINAL PRIORITIZED STUDY ORDER ===
         story.append(Spacer(1, 1*cm))
@@ -430,6 +412,18 @@ class KTUModuleReportGenerator:
                 story.append(Paragraph(f"{i}. {item['topic']}", list_style))
         
         return story
+
+    def _append_priority_details(self, story, item, years_style):
+        """Append shared priority metadata lines to the PDF story."""
+        details = format_priority_details(item)
+        story.append(Paragraph(
+            details,
+            years_style
+        ))
+        story.append(Paragraph(
+            f"Avg Marks: {item['average_marks']} | Frequency (years): {item['frequency']}",
+            years_style
+        ))
     
     def _group_part_a(self, questions) -> List[Dict]:
         """Group Part A questions by year."""
@@ -500,11 +494,11 @@ class KTUModuleReportGenerator:
                 'years': ', '.join(str(y) for y in years) if years else 'N/A'
             }
             
-            if freq >= 4:
+            if freq >= TIER_TOP_THRESHOLD:
                 priority['top'].append(item)
-            elif freq == 3:
+            elif freq == TIER_HIGH_THRESHOLD:
                 priority['high'].append(item)
-            elif freq == 2:
+            elif freq == TIER_MEDIUM_THRESHOLD:
                 priority['medium'].append(item)
             else:
                 priority['low'].append(item)
@@ -545,7 +539,7 @@ class KTUModuleReportGenerator:
             if q.marks:
                 stats["marks_total"] += q.marks
                 stats["marks_count"] += 1
-            part = getattr(q, "part", None)
+            part = q.part
             if part == 'A':
                 stats["part_a"] += 1
             elif part == 'B':
@@ -559,33 +553,25 @@ class KTUModuleReportGenerator:
         for text, stats in question_stats.items():
             years = sorted(stats["years"])
             frequency_years = len(years)
-            average_marks = (
-                stats["marks_total"] / stats["marks_count"]
-                if stats["marks_count"]
-                else 0
+            average_marks = calculate_average_marks(
+                stats["marks_total"], stats["marks_count"]
             )
-            priority_score = round((2 * frequency_years) + average_marks, 1)
-            confidence = (
-                round((frequency_years / total_years) * 100, 1)
-                if total_years
-                else 0
-            )
+            priority_score = calculate_priority_score(frequency_years, average_marks)
+            confidence = calculate_confidence(frequency_years, total_years)
             
             topics_scored.append({
                 'topic': text[:80] + '...' if len(text) > 80 else text,
                 'frequency': frequency_years,
                 'years': ', '.join(str(y) for y in years) if years else 'N/A',
                 'priority_score': priority_score,
-                'average_marks': round(average_marks, 1),
+                'average_marks': average_marks,
                 'confidence': confidence,
                 'part_a': stats["part_a"],
                 'part_b': stats["part_b"],
             })
         
         # Sort by priority score then frequency
-        topics_scored.sort(
-            key=lambda item: (-item['priority_score'], -item['frequency'], item['topic'])
-        )
+        topics_scored.sort(key=priority_sort_key)
         
         # Bucket by tier using frequency across distinct years
         for rank, item in enumerate(topics_scored, 1):
