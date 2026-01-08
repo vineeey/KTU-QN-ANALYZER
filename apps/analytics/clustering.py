@@ -82,6 +82,15 @@ class TopicClusteringService:
             logger.warning(f"No questions found for subject {self.subject}")
             return {'clusters_created': 0, 'questions_clustered': 0}
         
+        # Calculate total unique years uploaded (for confidence score)
+        total_years = questions.values('paper__year').exclude(paper__year='').distinct().count()
+        if total_years == 0:
+            total_years = questions.values('paper').distinct().count()  # Fallback to paper count
+        
+        # Store total_years for use in cluster creation
+        self.total_years_uploaded = total_years
+        logger.info(f"Total unique years uploaded: {total_years}")
+        
         # Clear existing clusters for this subject
         with transaction.atomic():
             TopicCluster.objects.filter(subject=self.subject).delete()
@@ -554,6 +563,10 @@ class TopicClusteringService:
         # Frequency = number of unique years this topic appeared
         frequency_count = len(years)
         
+        # Calculate confidence score: (years appeared / total years uploaded) × 100
+        total_years = getattr(self, 'total_years_uploaded', 1)
+        confidence_score = round((frequency_count / total_years * 100), 1) if total_years > 0 else 0.0
+        
         # Determine priority tier based on frequency (use integer values)
         if frequency_count >= self.tier_1_threshold:
             priority = 1  # TOP PRIORITY (4+ times)
@@ -581,6 +594,7 @@ class TopicClusteringService:
             question_count=len(questions),
             part_a_count=part_a_count,
             part_b_count=part_b_count,
+            confidence_score=confidence_score,
             cluster_id=normalized_key[:100],
         )
 

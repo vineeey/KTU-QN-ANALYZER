@@ -63,12 +63,14 @@ class PDFExtractor:
             Extracted text as string
         """
         # Try pdfplumber first (most accurate for text-based PDFs)
+        best_text = ""
+        
         if self.pdfplumber:
             try:
                 text = self._extract_with_pdfplumber(pdf_path)
-                if text and len(text.strip()) > 100:  # Minimum viable text
-                    logger.info(f"✓ Extracted {len(text)} chars using pdfplumber")
-                    return text
+                if text and len(text.strip()) > len(best_text.strip()):
+                    best_text = text
+                    logger.info(f"✓ pdfplumber extracted {len(text)} chars")
             except Exception as e:
                 logger.warning(f"pdfplumber failed: {e}")
         
@@ -76,23 +78,33 @@ class PDFExtractor:
         if self.fitz:
             try:
                 text = self._extract_with_pymupdf(pdf_path)
-                if text and len(text.strip()) > 100:
-                    logger.info(f"✓ Extracted {len(text)} chars using PyMuPDF")
-                    return text
+                if text and len(text.strip()) > len(best_text.strip()):
+                    best_text = text
+                    logger.info(f"✓ PyMuPDF extracted {len(text)} chars")
             except Exception as e:
                 logger.warning(f"PyMuPDF failed: {e}")
         
-        # Try OCR as last resort (for scanned PDFs)
+        # If we have decent text, use it (lowered threshold to 50 chars)
+        if len(best_text.strip()) >= 50:
+            logger.info(f"✓ Using extracted text ({len(best_text)} chars)")
+            return best_text
+        
+        # Try OCR as last resort (for scanned PDFs) - optional
         if self.pytesseract and self.Image:
             try:
                 text = self._extract_with_ocr(pdf_path)
-                if text:
-                    logger.info(f"✓ Extracted {len(text)} chars using OCR")
-                    return text
+                if text and len(text.strip()) > len(best_text.strip()):
+                    best_text = text
+                    logger.info(f"✓ OCR extracted {len(text)} chars")
             except Exception as e:
-                logger.error(f"OCR failed: {e}")
+                logger.warning(f"OCR failed (optional): {e}")
         
-        raise RuntimeError("All extraction methods failed")
+        # Return whatever we got, even if minimal
+        if best_text.strip():
+            logger.info(f"✓ Returning {len(best_text)} chars of text")
+            return best_text
+        
+        raise RuntimeError("Could not extract any text from PDF")
     
     def _extract_with_pdfplumber(self, pdf_path: str) -> str:
         """Extract text using pdfplumber (primary method)."""

@@ -1,0 +1,340 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Analysis Results - KTU QP Analyzer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+        }
+        
+        header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px;
+            text-align: center;
+        }
+        
+        header h1 {
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+        
+        .content {
+            padding: 40px;
+        }
+        
+        .status-card {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 30px;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+        
+        .status-icon {
+            font-size: 60px;
+            margin-bottom: 15px;
+        }
+        
+        .status-text {
+            font-size: 18px;
+            color: #333;
+            margin-bottom: 10px;
+        }
+        
+        .status-detail {
+            font-size: 14px;
+            color: #666;
+        }
+        
+        .modules-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .module-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 12px;
+            padding: 25px;
+            text-align: center;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            text-decoration: none;
+            display: block;
+        }
+        
+        .module-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+        
+        .module-number {
+            font-size: 48px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        
+        .module-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+        
+        .module-desc {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+        
+        .info-box {
+            background: #e8f4fd;
+            border-left: 4px solid #2196F3;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+        }
+        
+        .info-box h3 {
+            color: #1976D2;
+            margin-bottom: 10px;
+        }
+        
+        .info-box ul {
+            margin-left: 20px;
+            color: #1976D2;
+        }
+        
+        .info-box li {
+            margin-bottom: 5px;
+        }
+        
+        .warning-box {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+        }
+        
+        .warning-box strong {
+            color: #856404;
+        }
+        
+        .btn-home {
+            display: inline-block;
+            padding: 12px 30px;
+            background: #6c757d;
+            color: white;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+            transition: background 0.3s;
+        }
+        
+        .btn-home:hover {
+            background: #5a6268;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+        
+        .stat-card {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+        }
+        
+        .stat-number {
+            font-size: 32px;
+            font-weight: bold;
+            color: #667eea;
+        }
+        
+        .stat-label {
+            font-size: 14px;
+            color: #666;
+            margin-top: 5px;
+        }
+        
+        .processing {
+            text-align: center;
+            padding: 40px;
+        }
+        
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 30px;
+            background: #e0e0e0;
+            border-radius: 15px;
+            overflow: hidden;
+            margin: 20px 0;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            transition: width 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📊 Analysis Results</h1>
+            <p>{{ job.subject_name }}</p>
+        </header>
+        
+        <div class="content">
+            {% if job_not_found %}
+                <div class="status-card">
+                    <div class="status-icon">❌</div>
+                    <div class="status-text">Job Not Found</div>
+                    <div class="status-detail">This job may have expired or the link is invalid.</div>
+                </div>
+                <div style="text-align: center;">
+                    <a href="/" class="btn-home">← Back to Home</a>
+                </div>
+            
+            {% elif not_ready %}
+                <div class="processing" id="processingView">
+                    <div class="spinner"></div>
+                    <h2>{{ job.get_status_display }}</h2>
+                    <p style="color: #666; margin-top: 10px;">{{ job.current_phase }}</p>
+                    
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progressBar" style="width: {{ job.progress }}%">
+                            {{ job.progress }}%
+                        </div>
+                    </div>
+                    
+                    <div class="stats-grid" style="margin-top: 30px;">
+                        <div class="stat-card">
+                            <div class="stat-number">{{ job.questions_extracted }}</div>
+                            <div class="stat-label">Questions Extracted</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-number">{{ job.topics_clustered }}</div>
+                            <div class="stat-label">Topics Clustered</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <script>
+                    // Auto-refresh every 3 seconds
+                    setTimeout(() => {
+                        location.reload();
+                    }, 3000);
+                </script>
+            
+            {% else %}
+                <!-- Success View -->
+                <div class="status-card">
+                    <div class="status-icon">✅</div>
+                    <div class="status-text">Analysis Complete!</div>
+                    <div class="status-detail">Your module-wise PDFs are ready for download</div>
+                </div>
+                
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-number">{{ job.questions_extracted }}</div>
+                        <div class="stat-label">Questions Analyzed</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number">{{ job.topics_clustered }}</div>
+                        <div class="stat-label">Topics Identified</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number">{{ job.total_years }}</div>
+                        <div class="stat-label">Years Covered</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number">5</div>
+                        <div class="stat-label">Module PDFs</div>
+                    </div>
+                </div>
+                
+                <div class="info-box">
+                    <h3>📄 What's in Each Module PDF?</h3>
+                    <ul>
+                        <li><strong>Complete Question Bank</strong> - All questions (Part A + Part B) sorted by year</li>
+                        <li><strong>Repeated Topic Analysis</strong> - AI-identified topics ranked by priority tiers</li>
+                        <li><strong>Confidence Scores</strong> - Statistical probability of topic repetition</li>
+                        <li><strong>Part A vs Part B Split</strong> - Understanding question distribution</li>
+                        <li><strong>Final Study Priority Order</strong> - Tier 1 → Tier 4 ranking</li>
+                    </ul>
+                </div>
+                
+                <h2 style="margin-bottom: 20px; text-align: center;">Download Module PDFs</h2>
+                
+                <div class="modules-grid">
+                    {% for module in modules %}
+                    <a href="{{ module.download_url }}" class="module-card">
+                        <div class="module-number">{{ module.number }}</div>
+                        <div class="module-title">Module {{ module.number }}</div>
+                        <div class="module-desc">📥 Click to Download</div>
+                    </a>
+                    {% endfor %}
+                </div>
+                
+                {% if hours_remaining %}
+                <div class="warning-box">
+                    <strong>⏰ Download Reminder:</strong> These files will be automatically deleted in {{ hours_remaining }} hours. Please download all modules now.
+                </div>
+                {% endif %}
+                
+                <div style="text-align: center; margin-top: 40px;">
+                    <a href="/" class="btn-home">🏠 Analyze Another Subject</a>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</body>
+</html>

@@ -203,6 +203,24 @@
                                             {{ cluster.topic_name }}
                                         </h3>
                                         
+                                        <div class="flex items-center gap-4 mb-2 text-sm text-gray-600">
+                                            <div class="flex items-center gap-1">
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                </svg>
+                                                <span class="font-semibold">Confidence:</span>
+                                                <span class="text-blue-700 font-bold">{{ cluster.confidence_score|floatformat:1 }}%</span>
+                                            </div>
+                                            <div class="flex items-center gap-1">
+                                                <span class="font-semibold">Part A:</span>
+                                                <span class="text-green-700 font-bold">{{ cluster.part_a_count }}</span>
+                                            </div>
+                                            <div class="flex items-center gap-1">
+                                                <span class="font-semibold">Part B:</span>
+                                                <span class="text-purple-700 font-bold">{{ cluster.part_b_count }}</span>
+                                            </div>
+                                        </div>
+                                        
                                         <div class="flex flex-wrap gap-1 mt-3">
                                             <span class="text-sm text-gray-600 font-medium mr-2">Years:</span>
                                             {% for year in cluster.years_appeared %}

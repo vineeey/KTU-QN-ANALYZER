@@ -63,6 +63,12 @@ class TopicCluster(BaseModel):
     part_a_count = models.PositiveIntegerField(default=0)
     part_b_count = models.PositiveIntegerField(default=0)
     
+    # Confidence score (percentage of years where topic appeared)
+    confidence_score = models.FloatField(
+        default=0.0,
+        help_text='Percentage of uploaded years where this topic appeared (0-100)'
+    )
+    
     class Meta:
         verbose_name = 'Topic Cluster'
         verbose_name_plural = 'Topic Clusters'
