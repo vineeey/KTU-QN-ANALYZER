@@ -16,6 +16,8 @@ from .services.extractor import QuestionExtractor
 from .services.classifier import ModuleClassifier
 from .services.bloom import BloomClassifier
 from .services.difficulty import DifficultyEstimator
+from .services.hybrid_llm_service import HybridLLMService
+from .services.image_preprocessor import ImagePreprocessor
 import fitz  # PyMuPDF for rendering (already a dependency)
 
 # Services with optional numpy dependency
@@ -44,6 +46,10 @@ class AnalysisPipeline:
         # Extractors
         self.pymupdf_extractor = PyMuPDFExtractor()  # Primary extractor
         self.fallback_extractor = QuestionExtractor()  # Fallback
+        
+        # Hybrid LLM Service for OCR cleaning and similarity
+        self.hybrid_llm = HybridLLMService()
+        self.image_preprocessor = ImagePreprocessor()
         
         # Services (with numpy fallback handling)
         if NUMPY_AVAILABLE:
@@ -362,6 +368,7 @@ class AnalysisPipeline:
             return [], None
 
         ocr_text_parts = []
+        raw_ocr_pages = []  # Store raw OCR for cleaning
 
         try:
             doc = fitz.open(pdf_path)
@@ -370,10 +377,18 @@ class AnalysisPipeline:
             return [], None
 
         try:
-            for page in doc:
+            for page_idx, page in enumerate(doc):
                 # Render page to image at higher DPI
                 pix = page.get_pixmap(matrix=fitz.Matrix(3, 3))  # 3x for better OCR
                 img = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
+
+                # Use advanced preprocessing if enabled
+                if settings.OCR_ENHANCEMENT.get('USE_ADVANCED_PREPROCESSING', False):
+                    try:
+                        img = self.image_preprocessor.enhance_for_ocr(img)
+                        logger.debug(f"Applied advanced preprocessing to page {page_idx + 1}")
+                    except Exception as e:
+                        logger.warning(f"Image preprocessing failed: {e}")
 
                 candidates = []
 
@@ -403,13 +418,34 @@ class AnalysisPipeline:
                         page_text.append(text)
 
                 if page_text:
-                    ocr_text_parts.append("\n".join(page_text))
+                    # Use the best candidate (longest text usually means most accurate)
+                    best_text = max(page_text, key=len)
+                    raw_ocr_pages.append(best_text)
+                    ocr_text_parts.append(best_text)
         finally:
             doc.close()
 
         if not ocr_text_parts:
             logger.warning("OCR produced no text")
             return [], None
+
+        # Apply LLM cleaning to OCR text if enabled
+        if settings.OCR_ENHANCEMENT.get('USE_LLM_CLEANING', True) and raw_ocr_pages:
+            try:
+                logger.info("Applying LLM-based OCR cleaning...")
+                cleaned_pages, llm_used = self.hybrid_llm.clean_ocr_batch(
+                    pages=raw_ocr_pages,
+                    subject_name=None,  # TODO: Pass subject name if available
+                    year=None  # TODO: Extract year from paper if available
+                )
+                
+                if cleaned_pages and llm_used != 'none':
+                    ocr_text_parts = cleaned_pages
+                    logger.info(f"✓ OCR text cleaned using {llm_used}")
+                    # Store raw OCR for debugging (will be used when creating questions)
+            except Exception as e:
+                logger.error(f"LLM OCR cleaning failed: {e}")
+                # Continue with raw OCR if cleaning fails
 
         full_text = "\n".join(ocr_text_parts)
         questions = self.fallback_extractor.extract_questions(full_text)

@@ -14,12 +14,14 @@ sentence-transformers>=2.2.2
 torch>=2.1.0
 spacy>=3.7.2
 httpx>=0.26.0  # For Ollama API calls
+google-generativeai>=0.3.0  # For Gemini API
 
 # PDF Processing
 pdfplumber>=0.10.3
 PyMuPDF>=1.23.8
 pytesseract>=0.3.10
 Pillow>=10.2.0
+opencv-python>=4.8.0  # For advanced image preprocessing
 
 # PDF Report Generation
 WeasyPrint>=60.2
