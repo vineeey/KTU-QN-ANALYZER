@@ -1,28 +1,51 @@
 """
 Similarity detection using cosine similarity.
 Detects repeated/similar questions across years.
+Enhanced with hybrid LLM approach for edge cases.
 """
 import logging
 import numpy as np
 from typing import List, Optional, Tuple
 from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.cluster import AgglomerativeClustering
+from django.conf import settings
 
 logger = logging.getLogger(__name__)
 
 
 class SimilarityDetector:
     """
-    Detects similar/repeated questions using cosine similarity.
-    Implements the similarity threshold logic from master prompt.
+    Detects similar/repeated questions using hybrid approach:
+    - Fast embedding-based comparison for most cases
+    - LLM verification for edge cases (if enabled)
     """
     
-    def __init__(self, threshold: float = 0.75):
+    def __init__(self, threshold: float = 0.75, use_hybrid: bool = None):
         """
         Args:
             threshold: Cosine similarity threshold (0.75 = more lenient for catching similar questions)
+            use_hybrid: Use hybrid LLM approach for edge cases (default from settings)
         """
         self.threshold = threshold
+        
+        # Use hybrid approach if enabled in settings
+        if use_hybrid is None:
+            use_hybrid = settings.SIMILARITY_DETECTION.get('USE_HYBRID_APPROACH', False)
+        self.use_hybrid = use_hybrid
+        
+        # Lazy load hybrid LLM service
+        self._hybrid_llm = None
+    
+    def _get_hybrid_llm(self):
+        """Lazy load hybrid LLM service."""
+        if self._hybrid_llm is None and self.use_hybrid:
+            try:
+                from apps.analysis.services.hybrid_llm_service import HybridLLMService
+                self._hybrid_llm = HybridLLMService()
+                logger.info("✓ Hybrid LLM service initialized for similarity detection")
+            except Exception as e:
+                logger.warning(f"Failed to initialize hybrid LLM service: {e}")
+        return self._hybrid_llm
     
     def compute_similarity(self, embedding1: np.ndarray, embedding2: np.ndarray) -> float:
         """
@@ -101,15 +124,47 @@ class SimilarityDetector:
         logger.info(f"Found {len(pairs)} similar pairs (threshold={threshold})")
         return pairs
     
-    def is_duplicate(self, embedding1: np.ndarray, embedding2: np.ndarray) -> bool:
+    def is_duplicate(
+        self,
+        embedding1: np.ndarray,
+        embedding2: np.ndarray,
+        text1: Optional[str] = None,
+        text2: Optional[str] = None,
+        marks1: Optional[int] = None,
+        marks2: Optional[int] = None
+    ) -> Tuple[bool, float, str, str]:
         """
         Check if two questions are duplicates (same meaning, reworded).
+        Uses hybrid approach if enabled and texts are provided.
+        
+        Args:
+            embedding1: First question embedding
+            embedding2: Second question embedding
+            text1: Optional first question text (for hybrid LLM)
+            text2: Optional second question text (for hybrid LLM)
+            marks1: Optional marks for first question
+            marks2: Optional marks for second question
         
         Returns:
-            True if similarity >= threshold
+            Tuple of (is_similar, similarity_score, method, reason)
         """
         similarity = self.compute_similarity(embedding1, embedding2)
-        return similarity >= self.threshold
+        
+        # If hybrid approach is enabled and we have text
+        if self.use_hybrid and text1 and text2:
+            hybrid_llm = self._get_hybrid_llm()
+            if hybrid_llm:
+                try:
+                    is_similar, conf, method, reason = hybrid_llm.are_questions_similar(
+                        text1, text2, marks1, marks2
+                    )
+                    return is_similar, conf, method, reason
+                except Exception as e:
+                    logger.warning(f"Hybrid LLM check failed: {e}, falling back to embedding")
+        
+        # Fallback to simple threshold check
+        is_similar = similarity >= self.threshold
+        return is_similar, similarity, 'embedding', f'Embedding similarity: {similarity:.3f}'
     
     def group_similar_questions(
         self,
