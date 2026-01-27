@@ -154,7 +154,10 @@ QWEN_API_KEY = os.environ.get('QWEN_API_KEY', '')
 QWEN_API_URL = os.environ.get('QWEN_API_URL', 'https://dashscope.aliyuncs.com/compatible-mode/v1')
 QWEN_MODEL = os.environ.get('QWEN_MODEL', 'qwen2.5-7b-instruct')
 
-# Legacy Ollama Configuration (deprecated - use Qwen API)
+# Gemini API Configuration (Primary LLM for OCR and similarity)
+GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY', '')
+
+# Ollama Configuration (Fallback for Gemini)
 OLLAMA_BASE_URL = os.environ.get('OLLAMA_BASE_URL', 'http://localhost:11434')
 OLLAMA_MODEL = os.environ.get('OLLAMA_MODEL', 'qwen2.5:7b-instruct')
 # Supported models: qwen2.5:7b-instruct, llama3.2:3b, llama3.1:3b, phi3, tinyllama
@@ -172,6 +175,23 @@ UNIVERSAL_EXAM_ANALYZER = {
     'EXTRACT_IMAGES': True,  # Extract images with PyMuPDF
     'USE_LOCAL_LLM': True,  # Use Ollama for LLM tasks
     'MIN_CONFIDENCE': 0.6,  # Minimum confidence for AI classification
+}
+
+# OCR Enhancement Settings
+OCR_ENHANCEMENT = {
+    'USE_LLM_CLEANING': os.environ.get('OCR_USE_LLM_CLEANING', 'true').lower() in ('true', '1', 'yes'),
+    'USE_ADVANCED_PREPROCESSING': True,
+    'BATCH_PAGES': os.environ.get('OCR_BATCH_PAGES', 'true').lower() in ('true', '1', 'yes'),
+    'MAX_PAGES_PER_BATCH': 5,
+}
+
+# Similarity Detection Settings
+SIMILARITY_DETECTION = {
+    'USE_HYBRID_APPROACH': os.environ.get('SIMILARITY_USE_HYBRID', 'true').lower() in ('true', '1', 'yes'),
+    'EMBEDDING_MODEL': os.environ.get('SIMILARITY_EMBEDDING_MODEL', 'multi-qa-MiniLM-L6-cos-v1'),
+    'THRESHOLD_HIGH': float(os.environ.get('SIMILARITY_THRESHOLD_HIGH', '0.85')),
+    'THRESHOLD_LOW': float(os.environ.get('SIMILARITY_THRESHOLD_LOW', '0.65')),
+    'USE_LLM_FOR_EDGE_CASES': True,
 }
 
 # File Upload Settings

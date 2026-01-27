@@ -44,6 +44,27 @@ class Question(BaseModel):
     sub_questions = models.JSONField(default=list, blank=True)
     marks = models.PositiveIntegerField(null=True, blank=True)
     
+    # OCR tracking fields
+    raw_ocr_text = models.TextField(
+        blank=True,
+        help_text='Original OCR output before LLM cleaning'
+    )
+    cleaned_text = models.TextField(
+        blank=True,
+        help_text='LLM-cleaned text (if OCR cleaning was used)'
+    )
+    ocr_cleaned_by = models.CharField(
+        max_length=20,
+        blank=True,
+        choices=[
+            ('none', 'Not Cleaned'),
+            ('gemini', 'Gemini 1.5 Flash'),
+            ('ollama', 'Ollama'),
+        ],
+        default='none',
+        help_text='Which LLM was used for OCR cleaning'
+    )
+    
     # Images and diagrams (extracted coordinates and data)
     images = models.JSONField(
         default=list, 
@@ -95,6 +116,22 @@ class Question(BaseModel):
         related_name='duplicates'
     )
     similarity_score = models.FloatField(null=True, blank=True)
+    
+    # Similarity detection tracking
+    similarity_method = models.CharField(
+        max_length=20,
+        blank=True,
+        choices=[
+            ('embedding', 'Embedding Only'),
+            ('llm', 'LLM Only'),
+            ('hybrid', 'Hybrid (Embedding + LLM)'),
+        ],
+        help_text='Method used for similarity detection'
+    )
+    similarity_reason = models.TextField(
+        blank=True,
+        help_text='LLM explanation for similarity decision (for edge cases)'
+    )
     
     # Repetition tracking
     repetition_count = models.PositiveIntegerField(
