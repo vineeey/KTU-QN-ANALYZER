@@ -6,7 +6,7 @@ import logging
 import re
 import json
 import time
-from typing import List, Dict, Any, Optional, Tuple
+from typing import List, Dict, Any, Optional, Tuple, Union
 from django.conf import settings
 import numpy as np
 
@@ -137,7 +137,7 @@ class HybridLLMService:
         
         return None
     
-    def _call_llm(self, prompt: str) -> Optional[str]:
+    def _call_llm(self, prompt: str) -> tuple[Optional[str], str]:
         """
         Call LLM with automatic fallback from Gemini to Ollama.
         
@@ -145,17 +145,21 @@ class HybridLLMService:
             prompt: The prompt to send
             
         Returns:
-            Response text or None if both failed
+            Tuple of (response_text, llm_used)
+            llm_used will be 'gemini', 'ollama', or 'none'
         """
         # Try Gemini first
         response = self._call_gemini(prompt)
         if response:
-            return response
+            return response, 'gemini'
         
         # Fallback to Ollama
         logger.info("Gemini unavailable, falling back to Ollama")
         response = self._call_ollama(prompt)
-        return response
+        if response:
+            return response, 'ollama'
+        
+        return None, 'none'
     
     # ========== OCR CLEANING ==========
     
@@ -187,13 +191,9 @@ class HybridLLMService:
         else:
             prompt = self._get_basic_ocr_prompt(raw_text)
         
-        cleaned = self._call_llm(prompt)
+        cleaned, llm_used = self._call_llm(prompt)
         
         if cleaned:
-            # Determine which LLM was used based on stats
-            gemini_before = self.stats['gemini_calls']
-            self._call_gemini("")  # Dummy call to check
-            llm_used = 'gemini' if self.stats['gemini_calls'] > gemini_before else 'ollama'
             return cleaned.strip(), llm_used
         else:
             logger.warning("LLM cleaning failed, returning original text")
@@ -229,12 +229,11 @@ class HybridLLMService:
         
         # Batch cleaning
         prompt = self._get_batch_ocr_prompt(pages, subject_name, year)
-        cleaned = self._call_llm(prompt)
+        cleaned, llm_used = self._call_llm(prompt)
         
         if cleaned:
             # Split back into pages
             pages_cleaned = self._split_batch_result(cleaned, len(pages))
-            llm_used = 'gemini' if self.stats['gemini_calls'] > 0 else 'ollama'
             return pages_cleaned, llm_used
         else:
             logger.warning("Batch LLM cleaning failed, returning original pages")
@@ -489,7 +488,7 @@ Return the cleaned pages with the same separator format."""
             Tuple of (is_similar, confidence, method, reason)
         """
         prompt = self._get_similarity_prompt(question1, question2, marks1, marks2)
-        response = self._call_llm(prompt)
+        response, llm_used = self._call_llm(prompt)
         
         self.stats['llm_comparisons'] += 1
         
