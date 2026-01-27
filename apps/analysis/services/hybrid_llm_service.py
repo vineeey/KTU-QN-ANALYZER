@@ -137,7 +137,7 @@ class HybridLLMService:
         
         return None
     
-    def _call_llm(self, prompt: str) -> tuple[Optional[str], str]:
+    def _call_llm(self, prompt: str) -> Tuple[Optional[str], str]:
         """
         Call LLM with automatic fallback from Gemini to Ollama.
         

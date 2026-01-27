@@ -157,7 +157,7 @@ QWEN_MODEL = os.environ.get('QWEN_MODEL', 'qwen2.5-7b-instruct')
 # Gemini API Configuration (Primary LLM for OCR and similarity)
 GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY', '')
 
-# Ollama Configuration (Fallback for Gemini)
+# Ollama Configuration (Fallback LLM - local deployment)
 OLLAMA_BASE_URL = os.environ.get('OLLAMA_BASE_URL', 'http://localhost:11434')
 OLLAMA_MODEL = os.environ.get('OLLAMA_MODEL', 'qwen2.5:7b-instruct')
 # Supported models: qwen2.5:7b-instruct, llama3.2:3b, llama3.1:3b, phi3, tinyllama
