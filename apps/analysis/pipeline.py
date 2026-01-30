@@ -108,6 +108,28 @@ class AnalysisPipeline:
             # Primary: pdfplumber via QuestionExtractor
             primary_text = self.fallback_extractor.extract_text(paper.file.path)
             if primary_text:
+                # Clean extracted text using LLM if enabled
+                if settings.OCR_ENHANCEMENT.get('USE_LLM_CLEANING', True):
+                    try:
+                        paper.status_detail = 'Cleaning extracted text with LLM...'
+                        paper.save()
+                        logger.info("Applying LLM-based text cleaning...")
+                        subject_name = paper.subject.name if hasattr(paper.subject, 'name') else None
+                        year = str(paper.year) if hasattr(paper, 'year') else None
+                        cleaned_text, llm_used = self.hybrid_llm.clean_ocr_text(
+                            raw_text=primary_text,
+                            subject_name=subject_name,
+                            year=year,
+                            use_advanced=True
+                        )
+                        if cleaned_text and llm_used != 'none':
+                            primary_text = cleaned_text
+                            logger.info(f"✓ Text cleaned using {llm_used}")
+                        else:
+                            logger.warning("LLM cleaning returned no result, using original text")
+                    except Exception as e:
+                        logger.error(f"LLM text cleaning failed: {e}, using original text")
+                
                 questions_data = self.fallback_extractor.extract_questions(primary_text)
                 paper.raw_text = primary_text
                 paper.status_detail = f'Extracted {len(questions_data)} questions (pdfplumber)'
@@ -123,7 +145,33 @@ class AnalysisPipeline:
                     questions_data, images = self.pymupdf_extractor.extract_questions_with_images(
                         paper.file.path
                     )
-                    paper.raw_text = self.pymupdf_extractor.extract_text(paper.file.path)
+                    raw_text = self.pymupdf_extractor.extract_text(paper.file.path)
+                    
+                    # Clean extracted text using LLM if enabled
+                    if settings.OCR_ENHANCEMENT.get('USE_LLM_CLEANING', True):
+                        try:
+                            paper.status_detail = 'Cleaning extracted text with LLM...'
+                            paper.save()
+                            logger.info("Applying LLM-based text cleaning...")
+                            subject_name = paper.subject.name if hasattr(paper.subject, 'name') else None
+                            year = str(paper.year) if hasattr(paper, 'year') else None
+                            cleaned_text, llm_used = self.hybrid_llm.clean_ocr_text(
+                                raw_text=raw_text,
+                                subject_name=subject_name,
+                                year=year,
+                                use_advanced=True
+                            )
+                            if cleaned_text and llm_used != 'none':
+                                raw_text = cleaned_text
+                                # Re-extract questions from cleaned text
+                                questions_data = self.fallback_extractor.extract_questions(cleaned_text)
+                                logger.info(f"✓ Text cleaned using {llm_used}, re-extracted {len(questions_data)} questions")
+                            else:
+                                logger.warning("LLM cleaning returned no result, using original text")
+                        except Exception as e:
+                            logger.error(f"LLM text cleaning failed: {e}, using original text")
+                    
+                    paper.raw_text = raw_text
                     paper.page_count = self.pymupdf_extractor.get_page_count(paper.file.path)
                     paper.status_detail = f'Extracted {len(questions_data)} questions (fitz)'
                     paper.questions_extracted = len(questions_data)

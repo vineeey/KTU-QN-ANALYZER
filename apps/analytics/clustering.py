@@ -34,6 +34,7 @@ class TopicClusteringService:
     """
     AI-powered service to cluster questions by semantic meaning and analyze repetition patterns.
     Uses sentence-transformers for deep semantic understanding.
+    Enhanced with HybridLLMService for improved similarity detection.
     """
     
     def __init__(
@@ -63,6 +64,17 @@ class TopicClusteringService:
                 self.model = None
         else:
             logger.info("Using enhanced keyword-based clustering (no AI model)")
+        
+        # Initialize HybridLLMService for improved similarity detection
+        self.hybrid_llm = None
+        try:
+            from apps.analysis.services.hybrid_llm_service import HybridLLMService
+            from django.conf import settings
+            if settings.SIMILARITY_DETECTION.get('USE_HYBRID_APPROACH', False):
+                self.hybrid_llm = HybridLLMService()
+                logger.info("✅ HybridLLMService initialized for similarity detection")
+        except Exception as e:
+            logger.warning(f"Failed to initialize HybridLLMService: {e}, using embedding-only approach")
     
     def analyze_subject(self) -> Dict[str, Any]:
         """
@@ -176,11 +188,17 @@ class TopicClusteringService:
                         'questions': cluster_questions
                     })
                 logger.info(f"✅ Created {len(clusters)} clusters via Agglomerative")
+                
+                # Refine clusters using hybrid LLM if available
+                if self.hybrid_llm:
+                    clusters = self._refine_clusters_with_llm(clusters)
+                    logger.info(f"✅ Refined to {len(clusters)} clusters using hybrid LLM")
+                    
             except Exception as e:
                 logger.warning(f"Agglomerative clustering failed, falling back to greedy: {e}")
 
         if not clusters:
-            # Greedy fallback using cosine with thresholds
+            # Greedy fallback using cosine with thresholds + hybrid LLM for edge cases
             processed = set()
             for i, question in enumerate(questions):
                 if i in processed:
@@ -191,7 +209,27 @@ class TopicClusteringService:
                     if j in processed or i == j:
                         continue
                     similarity = self._cosine_similarity(embeddings[i], embeddings[j])
-                    if similarity >= self.similarity_threshold:  # topic band
+                    
+                    # Use hybrid LLM service for edge cases if available
+                    is_similar = False
+                    if self.hybrid_llm and self.similarity_threshold <= similarity < self.same_question_threshold:
+                        # Edge case: use LLM verification
+                        try:
+                            is_similar, conf, method, reason = self.hybrid_llm.are_questions_similar(
+                                question.text,
+                                questions[j].text,
+                                question.marks if hasattr(question, 'marks') else None,
+                                questions[j].marks if hasattr(questions[j], 'marks') else None
+                            )
+                            logger.debug(f"Hybrid check Q{i} vs Q{j}: {is_similar} ({conf:.2f}) via {method}")
+                        except Exception as e:
+                            logger.warning(f"Hybrid LLM similarity check failed: {e}")
+                            is_similar = similarity >= self.similarity_threshold
+                    else:
+                        # Use threshold-based decision
+                        is_similar = similarity >= self.similarity_threshold
+                    
+                    if is_similar:
                         cluster_indices.append(j)
                         processed.add(j)
                 cluster_questions = [questions[idx] for idx in cluster_indices]
@@ -199,7 +237,7 @@ class TopicClusteringService:
                     'representative': cluster_questions[0],
                     'questions': cluster_questions
                 })
-            logger.info(f"✅ Created {len(clusters)} clusters via greedy fallback")
+            logger.info(f"✅ Created {len(clusters)} clusters via greedy fallback with hybrid LLM verification")
 
         return self._save_clusters(module, clusters)
     
@@ -292,6 +330,75 @@ class TopicClusteringService:
             return min(1.0, base_similarity * 1.3)
         
         return base_similarity
+    
+    def _refine_clusters_with_llm(self, clusters: List[Dict]) -> List[Dict]:
+        """
+        Refine clusters using hybrid LLM service to verify similarity.
+        Splits clusters where questions are not actually similar according to LLM.
+        
+        Args:
+            clusters: List of cluster dicts with 'representative' and 'questions' keys
+            
+        Returns:
+            Refined list of clusters
+        """
+        if not self.hybrid_llm:
+            return clusters
+        
+        refined_clusters = []
+        total_splits = 0
+        
+        for cluster in clusters:
+            questions = cluster['questions']
+            
+            # Single-question clusters don't need refinement
+            if len(questions) <= 1:
+                refined_clusters.append(cluster)
+                continue
+            
+            # For multi-question clusters, verify each question is similar to the representative
+            representative = questions[0]
+            verified_questions = [representative]
+            orphaned_questions = []
+            
+            for question in questions[1:]:
+                try:
+                    is_similar, conf, method, reason = self.hybrid_llm.are_questions_similar(
+                        representative.text,
+                        question.text,
+                        representative.marks if hasattr(representative, 'marks') else None,
+                        question.marks if hasattr(question, 'marks') else None
+                    )
+                    
+                    if is_similar:
+                        verified_questions.append(question)
+                    else:
+                        orphaned_questions.append(question)
+                        logger.debug(f"Split question from cluster: {reason}")
+                except Exception as e:
+                    # On error, keep the question in the cluster (conservative)
+                    logger.warning(f"LLM verification failed: {e}")
+                    verified_questions.append(question)
+            
+            # Add the verified cluster
+            if verified_questions:
+                refined_clusters.append({
+                    'representative': verified_questions[0],
+                    'questions': verified_questions
+                })
+            
+            # Create singleton clusters for orphaned questions
+            for orphan in orphaned_questions:
+                refined_clusters.append({
+                    'representative': orphan,
+                    'questions': [orphan]
+                })
+                total_splits += 1
+        
+        if total_splits > 0:
+            logger.info(f"LLM refinement split {total_splits} questions into separate clusters")
+        
+        return refined_clusters
     
     def _save_clusters(self, module: Optional[Module], clusters: List[Dict]) -> Tuple[int, int]:
         """Save clusters to database."""
