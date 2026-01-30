@@ -163,9 +163,10 @@ class AnalysisPipeline:
                             )
                             if cleaned_text and llm_used != 'none':
                                 raw_text = cleaned_text
-                                # Re-extract questions from cleaned text
-                                questions_data = self.fallback_extractor.extract_questions(cleaned_text)
-                                logger.info(f"✓ Text cleaned using {llm_used}, re-extracted {len(questions_data)} questions")
+                                # Note: We don't re-extract questions here to preserve the 
+                                # questions_data and images from PyMuPDF structured extraction.
+                                # The cleaned text is stored in paper.raw_text for reference.
+                                logger.info(f"✓ Text cleaned using {llm_used}")
                             else:
                                 logger.warning("LLM cleaning returned no result, using original text")
                         except Exception as e:
@@ -241,18 +242,27 @@ class AnalysisPipeline:
             # Step 3: Create question objects in database
             job.status = AnalysisJob.Status.ANALYZING
             job.progress = 65
-            job.status_detail = 'Creating question records...'
             job.save()
-
-            paper.progress_percent = max(paper.progress_percent, 65)
-            paper.status_detail = 'Saving question records...'
-            paper.save()
             
             # Delete existing questions for this paper to avoid duplicates/stale data
             existing_question_count = Question.objects.filter(paper=paper).count()
             if existing_question_count > 0:
+                job.status_detail = f'Deleting {existing_question_count} old questions...'
+                job.save()
+                paper.status_detail = f'Deleting {existing_question_count} old questions...'
+                paper.progress_percent = max(paper.progress_percent, 65)
+                paper.save()
+                
                 logger.info(f"Deleting {existing_question_count} existing questions for paper {paper.id}")
                 Question.objects.filter(paper=paper).delete()
+                logger.info(f"✓ Deleted {existing_question_count} old questions")
+            
+            # Now update status to saving
+            job.status_detail = 'Creating question records...'
+            job.save()
+            paper.progress_percent = max(paper.progress_percent, 67)
+            paper.status_detail = 'Saving question records...'
+            paper.save()
             
             created_questions = []
             for i, q_data in enumerate(classified_questions):

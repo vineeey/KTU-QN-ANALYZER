@@ -32,7 +32,11 @@ def test_hybrid_llm_service():
         
         # Check configuration
         print(f"\nConfiguration:")
-        print(f"  - Gemini API Key: {'***' + service.gemini_api_key[-4:] if service.gemini_api_key else 'Not configured'}")
+        if service.gemini_api_key:
+            key_display = '***' + service.gemini_api_key[-4:] if len(service.gemini_api_key) >= 4 else '***'
+            print(f"  - Gemini API Key: {key_display}")
+        else:
+            print(f"  - Gemini API Key: Not configured")
         print(f"  - Ollama URL: {service.ollama_base_url}")
         print(f"  - Ollama Model: {service.ollama_model}")
         

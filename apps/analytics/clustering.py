@@ -200,6 +200,9 @@ class TopicClusteringService:
         if not clusters:
             # Greedy fallback using cosine with thresholds + hybrid LLM for edge cases
             processed = set()
+            llm_verification_count = 0
+            max_llm_verifications = 50  # Limit LLM calls to prevent excessive API usage
+            
             for i, question in enumerate(questions):
                 if i in processed:
                     continue
@@ -212,7 +215,9 @@ class TopicClusteringService:
                     
                     # Use hybrid LLM service for edge cases if available
                     is_similar = False
-                    if self.hybrid_llm and self.similarity_threshold <= similarity < self.same_question_threshold:
+                    if (self.hybrid_llm and 
+                        self.similarity_threshold <= similarity < self.same_question_threshold and
+                        llm_verification_count < max_llm_verifications):
                         # Edge case: use LLM verification
                         try:
                             is_similar, conf, method, reason = self.hybrid_llm.are_questions_similar(
@@ -221,6 +226,7 @@ class TopicClusteringService:
                                 question.marks if hasattr(question, 'marks') else None,
                                 questions[j].marks if hasattr(questions[j], 'marks') else None
                             )
+                            llm_verification_count += 1
                             logger.debug(f"Hybrid check Q{i} vs Q{j}: {is_similar} ({conf:.2f}) via {method}")
                         except Exception as e:
                             logger.warning(f"Hybrid LLM similarity check failed: {e}")
@@ -237,7 +243,11 @@ class TopicClusteringService:
                     'representative': cluster_questions[0],
                     'questions': cluster_questions
                 })
-            logger.info(f"✅ Created {len(clusters)} clusters via greedy fallback with hybrid LLM verification")
+            
+            if llm_verification_count > 0:
+                logger.info(f"✅ Created {len(clusters)} clusters via greedy fallback with {llm_verification_count} hybrid LLM verifications")
+            else:
+                logger.info(f"✅ Created {len(clusters)} clusters via greedy fallback")
 
         return self._save_clusters(module, clusters)
     
@@ -347,6 +357,8 @@ class TopicClusteringService:
         
         refined_clusters = []
         total_splits = 0
+        llm_verification_count = 0
+        max_llm_verifications = 100  # Limit LLM calls to prevent excessive API usage
         
         for cluster in clusters:
             questions = cluster['questions']
@@ -356,12 +368,23 @@ class TopicClusteringService:
                 refined_clusters.append(cluster)
                 continue
             
+            # Skip refinement if we've exceeded the limit
+            if llm_verification_count >= max_llm_verifications:
+                refined_clusters.append(cluster)
+                continue
+            
             # For multi-question clusters, verify each question is similar to the representative
             representative = questions[0]
             verified_questions = [representative]
             orphaned_questions = []
             
             for question in questions[1:]:
+                # Check limit
+                if llm_verification_count >= max_llm_verifications:
+                    # Keep remaining questions in cluster without verification
+                    verified_questions.append(question)
+                    continue
+                
                 try:
                     is_similar, conf, method, reason = self.hybrid_llm.are_questions_similar(
                         representative.text,
@@ -369,6 +392,7 @@ class TopicClusteringService:
                         representative.marks if hasattr(representative, 'marks') else None,
                         question.marks if hasattr(question, 'marks') else None
                     )
+                    llm_verification_count += 1
                     
                     if is_similar:
                         verified_questions.append(question)
@@ -396,7 +420,9 @@ class TopicClusteringService:
                 total_splits += 1
         
         if total_splits > 0:
-            logger.info(f"LLM refinement split {total_splits} questions into separate clusters")
+            logger.info(f"LLM refinement split {total_splits} questions into separate clusters ({llm_verification_count} verifications)")
+        elif llm_verification_count > 0:
+            logger.info(f"LLM refinement completed with {llm_verification_count} verifications, no splits needed")
         
         return refined_clusters
     
