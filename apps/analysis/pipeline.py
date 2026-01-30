@@ -248,6 +248,12 @@ class AnalysisPipeline:
             paper.status_detail = 'Saving question records...'
             paper.save()
             
+            # Delete existing questions for this paper to avoid duplicates/stale data
+            existing_question_count = Question.objects.filter(paper=paper).count()
+            if existing_question_count > 0:
+                logger.info(f"Deleting {existing_question_count} existing questions for paper {paper.id}")
+                Question.objects.filter(paper=paper).delete()
+            
             created_questions = []
             for i, q_data in enumerate(classified_questions):
                 # Update progress every 5 questions
