@@ -4,6 +4,8 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.urls import reverse_lazy
 from django.contrib import messages
 from django.shortcuts import get_object_or_404, redirect
+from django.http import HttpResponseForbidden
+from django.core.cache import cache
 import hashlib
 import logging
 
@@ -14,11 +16,64 @@ from .forms import PaperUploadForm, BatchPaperUploadForm
 logger = logging.getLogger(__name__)
 
 
+def validate_pdf(uploaded_file) -> tuple[bool, str]:
+    """Validate uploaded file is actually a PDF."""
+    # Check file extension
+    if not uploaded_file.name.lower().endswith('.pdf'):
+        return False, "File extension must be .pdf"
+    
+    # Check magic bytes (PDF signature)
+    try:
+        uploaded_file.seek(0)
+        header = uploaded_file.read(5)
+        uploaded_file.seek(0)
+        
+        if not header.startswith(b'%PDF-'):
+            return False, "File is not a valid PDF (invalid header)"
+    except Exception as e:
+        logger.warning(f"Could not read file header: {e}")
+    
+    # Check file size
+    if uploaded_file.size > 50 * 1024 * 1024:  # 50MB
+        return False, "File size exceeds 50MB limit"
+    
+    if uploaded_file.size < 1024:  # 1KB
+        return False, "File size too small to be a valid PDF"
+    
+    return True, "Valid"
+
+
 class GenericPaperUploadView(FormView):
     """Upload papers without requiring authentication - PUBLIC ACCESS."""
     
     form_class = BatchPaperUploadForm
     template_name = 'papers/paper_upload_new.html'  # New enhanced template
+    
+    def get_client_ip(self, request):
+        """Get client IP address."""
+        x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+        if x_forwarded_for:
+            ip = x_forwarded_for.split(',')[0]
+        else:
+            ip = request.META.get('REMOTE_ADDR')
+        return ip
+    
+    def dispatch(self, request, *args, **kwargs):
+        """Add rate limiting for anonymous users."""
+        # Rate limiting for anonymous users
+        if not request.user.is_authenticated:
+            ip = self.get_client_ip(request)
+            cache_key = f'upload_limit_{ip}'
+            
+            # Get upload count in last hour
+            upload_count = cache.get(cache_key, 0)
+            
+            if upload_count >= 5:  # Max 5 uploads per hour per IP
+                return HttpResponseForbidden(
+                    "Rate limit exceeded. Please try again later or create an account."
+                )
+        
+        return super().dispatch(request, *args, **kwargs)
     
     def get_or_create_subject(self, name, code, university, university_type, syllabus_file=None):
         """Get or create a subject with modules for public or authenticated user."""
@@ -83,6 +138,13 @@ class GenericPaperUploadView(FormView):
     
     def post(self, request, *args, **kwargs):
         """Handle file upload with university type and syllabus."""
+        # Increment upload count for rate limiting
+        if not request.user.is_authenticated:
+            ip = self.get_client_ip(request)
+            cache_key = f'upload_limit_{ip}'
+            upload_count = cache.get(cache_key, 0)
+            cache.set(cache_key, upload_count + 1, 3600)  # 1 hour TTL
+        
         files = request.FILES.getlist('files')
         university_type = request.POST.get('university_type', 'KTU')  # KTU or OTHER
         university_name = request.POST.get('university_name', '').strip()
@@ -96,8 +158,10 @@ class GenericPaperUploadView(FormView):
         
         # Validate files
         for f in files:
-            if not f.name.lower().endswith('.pdf'):
-                messages.error(request, f'"{f.name}" is not a PDF file. Only PDF files are supported.')
+            is_valid, error_msg = validate_pdf(f)
+            if not is_valid:
+                messages.error(request, f'"{f.name}": {error_msg}')
+                return self.get(request, *args, **kwargs)
                 return self.get(request, *args, **kwargs)
             if f.size > 50 * 1024 * 1024:
                 messages.error(request, f'"{f.name}" exceeds 50MB limit.')
