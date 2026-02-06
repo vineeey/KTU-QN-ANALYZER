@@ -4,10 +4,13 @@ Statistics calculator for analytics dashboard.
 from typing import Dict, Any, List
 from collections import Counter
 from django.db.models import Count, Avg
+import logging
 
 from apps.questions.models import Question
 from apps.subjects.models import Subject
 from apps.analytics.models import TopicCluster
+
+logger = logging.getLogger(__name__)
 
 
 class StatsCalculator:
@@ -141,7 +144,8 @@ class StatsCalculator:
         """Get detailed topic statistics for a specific module."""
         try:
             module = self.subject.modules.get(number=module_number)
-        except:
+        except Exception as e:
+            logger.error(f"Failed to get module {module_number}: {e}")
             return {}
         
         clusters = TopicCluster.objects.filter(

@@ -174,9 +174,38 @@ class Question(BaseModel):
         verbose_name = 'Question'
         verbose_name_plural = 'Questions'
         ordering = ['question_number']
+        indexes = [
+            models.Index(fields=['paper', 'module']),
+            models.Index(fields=['is_duplicate']),
+            models.Index(fields=['difficulty', 'bloom_level']),
+        ]
     
     def __str__(self):
         return f"Q{self.question_number}: {self.text[:50]}..."
+    
+    def clean(self):
+        """Validate question data."""
+        from django.core.exceptions import ValidationError
+        super().clean()
+        
+        # Validate marks are positive
+        if self.marks is not None and self.marks <= 0:
+            raise ValidationError({'marks': 'Marks must be positive'})
+        
+        # Validate question text is not empty
+        if not self.text or len(self.text.strip()) < 5:
+            raise ValidationError({'text': 'Question text is too short'})
+        
+        # Validate duplicate relationship
+        if self.is_duplicate and not self.duplicate_of:
+            raise ValidationError({'duplicate_of': 'Duplicate questions must reference original'})
+    
+    def save(self, *args, **kwargs):
+        """Override save to perform validation."""
+        # Only perform full_clean if not in a bulk operation
+        if not kwargs.pop('skip_validation', False):
+            self.full_clean()
+        super().save(*args, **kwargs)
     
     def get_similar_questions(self, threshold=0.8):
         """Find similar questions based on embedding similarity."""

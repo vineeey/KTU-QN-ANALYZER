@@ -5,10 +5,13 @@ from django.urls import reverse_lazy
 from django.contrib import messages
 from django.shortcuts import get_object_or_404, redirect
 import hashlib
+import logging
 
 from apps.subjects.models import Subject, Module
 from .models import Paper
 from .forms import PaperUploadForm, BatchPaperUploadForm
+
+logger = logging.getLogger(__name__)
 
 
 class GenericPaperUploadView(FormView):
@@ -47,8 +50,8 @@ class GenericPaperUploadView(FormView):
                 with pdfplumber.open(syllabus_file) as pdf:
                     syllabus_text = '\n'.join([page.extract_text() or '' for page in pdf.pages])
                 subject.syllabus_text = syllabus_text
-            except:
-                pass
+            except Exception as e:
+                logger.error(f"Failed to extract syllabus text: {e}")
             subject.save()
         
         # Create 5 modules by default

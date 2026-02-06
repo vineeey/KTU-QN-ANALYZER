@@ -56,6 +56,11 @@ class Paper(SoftDeleteModel):
         verbose_name = 'Paper'
         verbose_name_plural = 'Papers'
         ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['subject', 'status']),
+            models.Index(fields=['file_hash']),
+            models.Index(fields=['-created_at']),
+        ]
     
     def __str__(self):
         return f"{self.title} ({self.year})" if self.year else self.title
