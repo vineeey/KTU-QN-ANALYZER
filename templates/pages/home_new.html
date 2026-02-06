@@ -1,0 +1,43 @@
+﻿{% extends 'base/base.html' %}
+{% load static %}
+
+{% block title %}PYQ Analyzer - AI-Powered Question Analysis{% endblock %}
+
+{% block content %}
+<!-- Hero Section -->
+<div class="bg-gradient-to-br from-blue-600 via-purple-600 to-pink-500 min-h-screen flex items-center">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
+        <div class="text-center text-white">
+            <h1 class="text-5xl md:text-7xl font-extrabold mb-4 drop-shadow-lg">
+                PYQ Analyzer
+            </h1>
+
+            <p class="text-xl md:text-2xl mb-3 text-blue-100 font-semibold">
+                AI-Powered Repeated Question Analysis
+            </p>
+
+            <p class="text-lg mb-10 text-blue-50 max-w-2xl mx-auto">
+                Smart exam preparation with semantic clustering, priority ranking, and PDF-to-questions automation.
+            </p>
+
+            <div class="flex flex-col sm:flex-row gap-4 justify-center">
+                {% if user.is_authenticated %}
+                <a href="{% url 'analytics:subject_list' %}"
+                   class="inline-flex items-center justify-center gap-2 bg-white text-gray-900 px-10 py-4 rounded-lg text-lg font-bold hover:bg-gray-100 transition-all shadow-2xl">
+                    <span>Go to Dashboard</span>
+                </a>
+                {% else %}
+                <a href="{% url 'papers:upload_generic' %}"
+                   class="inline-flex items-center justify-center gap-2 bg-white text-gray-900 px-10 py-4 rounded-lg text-lg font-bold hover:bg-gray-100 transition-all shadow-2xl">
+                    <span>Upload Papers</span>
+                </a>
+                <a href="{% url 'analytics:subject_list' %}"
+                   class="inline-flex items-center justify-center gap-2 bg-transparent border-2 border-white text-white px-10 py-4 rounded-lg text-lg font-bold hover:bg-white hover:text-purple-700 transition-all">
+                    <span>Get Started</span>
+                </a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

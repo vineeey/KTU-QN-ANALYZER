@@ -1,0 +1,51 @@
+{% extends 'base/base.html' %}
+
+{% block title %}Rules - {{ subject.name }}{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 py-8">
+  <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="flex items-start justify-between gap-4 mb-6">
+      <div>
+        <h1 class="text-3xl font-bold text-gray-900">Classification Rules</h1>
+        <p class="mt-1 text-sm text-gray-600">{{ subject.name }}</p>
+      </div>
+      <div class="flex gap-3">
+        <a href="{% url 'subjects:detail' pk=subject.pk %}" class="bg-gray-200 hover:bg-gray-300 text-gray-800 px-4 py-2 rounded-lg text-sm font-semibold">Back</a>
+        <a href="{% url 'rules:create' subject_pk=subject.pk %}" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-semibold">+ New Rule</a>
+      </div>
+    </div>
+
+    <div class="bg-white rounded-xl shadow-lg overflow-hidden border border-gray-100">
+      <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+        <h2 class="text-lg font-bold text-gray-900">Rules</h2>
+        <span class="text-sm text-gray-600">{{ rules|length }} total</span>
+      </div>
+
+      {% if rules %}
+        <div class="divide-y divide-gray-200">
+          {% for rule in rules %}
+            <div class="p-6 flex items-start justify-between gap-4">
+              <div class="min-w-0">
+                <p class="text-base font-semibold text-gray-900 truncate">{{ rule.name }}</p>
+                <p class="mt-1 text-sm text-gray-600">{{ rule.get_rule_type_display }} • Priority {{ rule.priority }}{% if not rule.is_active %} • <span class="text-red-600 font-medium">Inactive</span>{% endif %}</p>
+                {% if rule.description %}<p class="mt-2 text-sm text-gray-700">{{ rule.description }}</p>{% endif %}
+                {% if rule.validation_error %}<p class="mt-2 text-sm text-red-700">{{ rule.validation_error }}</p>{% endif %}
+              </div>
+              <div class="shrink-0 flex gap-2">
+                <a href="{% url 'rules:update' pk=rule.pk %}" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg text-xs font-semibold">Edit</a>
+                <a href="{% url 'rules:delete' pk=rule.pk %}" class="bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded-lg text-xs font-semibold">Delete</a>
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div class="p-8 text-center text-gray-600">
+          <p class="mb-4">No rules yet.</p>
+          <a href="{% url 'rules:create' subject_pk=subject.pk %}" class="text-blue-600 hover:text-blue-700 font-medium">+ Create your first rule</a>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

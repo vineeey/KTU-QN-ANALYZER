@@ -1,0 +1,71 @@
+"""
+User authentication views.
+"""
+from django.views.generic import CreateView, UpdateView, TemplateView
+from django.contrib.auth.views import LoginView, LogoutView
+from django.contrib.auth.mixins import LoginRequiredMixin
+from django.urls import reverse_lazy
+from django.contrib import messages
+
+from .forms import CustomUserCreationForm, CustomLoginForm, UserProfileForm
+from .models import User
+
+
+class RegisterView(CreateView):
+    """User registration view."""
+    
+    model = User
+    form_class = CustomUserCreationForm
+    template_name = 'users/register.html'
+    success_url = reverse_lazy('users:login')
+    
+    def form_valid(self, form):
+        messages.success(self.request, 'Account created successfully! Please log in.')
+        return super().form_valid(form)
+
+
+class CustomLoginView(LoginView):
+    """Custom login view with styled form."""
+    
+    form_class = CustomLoginForm
+    template_name = 'users/login.html'
+    redirect_authenticated_user = True
+    
+    def get_success_url(self):
+        return reverse_lazy('core:dashboard')
+    
+    def form_valid(self, form):
+        messages.success(self.request, f'Welcome back, {form.get_user().get_display_name()}!')
+        return super().form_valid(form)
+
+
+class CustomLogoutView(LogoutView):
+    """Custom logout view."""
+    
+    next_page = reverse_lazy('core:home')
+    
+    def dispatch(self, request, *args, **kwargs):
+        messages.info(request, 'You have been logged out.')
+        return super().dispatch(request, *args, **kwargs)
+
+
+class ProfileView(LoginRequiredMixin, TemplateView):
+    """User profile view."""
+    
+    template_name = 'users/profile.html'
+
+
+class ProfileUpdateView(LoginRequiredMixin, UpdateView):
+    """Update user profile."""
+    
+    model = User
+    form_class = UserProfileForm
+    template_name = 'users/profile_edit.html'
+    success_url = reverse_lazy('users:profile')
+    
+    def get_object(self, queryset=None):
+        return self.request.user
+    
+    def form_valid(self, form):
+        messages.success(self.request, 'Profile updated successfully!')
+        return super().form_valid(form)

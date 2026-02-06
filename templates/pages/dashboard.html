@@ -1,0 +1,28 @@
+{% extends 'base/base.html' %}
+
+{% block title %}Dashboard | PYQ Analyzer{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto px-4 py-10">
+  <h1 class="text-3xl font-bold text-gray-900">Dashboard</h1>
+  <p class="mt-2 text-gray-600">Quick links</p>
+
+  <div class="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+    <a class="bg-white border border-gray-200 rounded-lg p-6 hover:border-blue-500 hover:shadow-md transition" href="{% url 'analytics:subject_list' %}">
+      <div class="text-2xl">📊</div>
+      <div class="mt-2 font-semibold text-gray-900">Analytics</div>
+      <div class="text-sm text-gray-600">View subject dashboards</div>
+    </a>
+    <a class="bg-white border border-gray-200 rounded-lg p-6 hover:border-blue-500 hover:shadow-md transition" href="{% url 'subjects:list' %}">
+      <div class="text-2xl">📚</div>
+      <div class="mt-2 font-semibold text-gray-900">Subjects</div>
+      <div class="text-sm text-gray-600">Manage your subjects</div>
+    </a>
+    <a class="bg-white border border-gray-200 rounded-lg p-6 hover:border-blue-500 hover:shadow-md transition" href="{% url 'papers:upload_generic' %}">
+      <div class="text-2xl">⬆️</div>
+      <div class="mt-2 font-semibold text-gray-900">Upload</div>
+      <div class="text-sm text-gray-600">Upload new papers</div>
+    </a>
+  </div>
+</div>
+{% endblock %}

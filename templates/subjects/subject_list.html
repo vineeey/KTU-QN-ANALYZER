@@ -1,0 +1,95 @@
+{% extends 'base/base.html' %}
+{% load static %}
+
+{% block title %}My Subjects - PYQ Analyzer{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 py-8">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        
+        <!-- Header -->
+        <div class="flex items-center justify-between mb-8">
+            <div>
+                <h1 class="text-3xl font-bold text-gray-900 mb-2">My Subjects</h1>
+                <p class="text-gray-600">Manage your subjects and upload question papers</p>
+            </div>
+            <div class="flex gap-3">
+                <a href="{% url 'papers:upload_generic' %}" 
+                   class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-semibold shadow-lg hover:shadow-xl transition-all flex items-center">
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                    </svg>
+                    Upload Papers
+                </a>
+                <a href="{% url 'subjects:create' %}" 
+                   class="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-semibold shadow-lg hover:shadow-xl transition-all flex items-center">
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                    </svg>
+                    Create Subject
+                </a>
+            </div>
+        </div>
+
+        {% if subjects %}
+        <!-- Subjects Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {% for subject in subjects %}
+            <div class="bg-white rounded-xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden border border-gray-100">
+                <div class="bg-gradient-to-r from-blue-600 to-purple-600 p-6 text-white">
+                    <h3 class="text-xl font-bold mb-1">{{ subject.name }}</h3>
+                    <p class="text-blue-100 text-sm">{{ subject.code|default:"No code" }}</p>
+                </div>
+                
+                <div class="p-6">
+                    <div class="flex items-center justify-between text-sm mb-4">
+                        <span class="text-gray-600">{{ subject.university|default:"Unknown" }}</span>
+                        <span class="text-gray-500">{{ subject.year|default:"" }}</span>
+                    </div>
+                    
+                    <div class="space-y-2 mb-6">
+                        <div class="flex items-center justify-between">
+                            <span class="text-gray-600 text-sm">Papers:</span>
+                            <span class="font-semibold text-gray-900">{{ subject.papers.count }}</span>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <span class="text-gray-600 text-sm">Modules:</span>
+                            <span class="font-semibold text-gray-900">{{ subject.modules.count }}</span>
+                        </div>
+                    </div>
+                    
+                    <div class="flex gap-2">
+                        <a href="{% url 'subjects:detail' subject.pk %}" 
+                           class="flex-1 bg-blue-600 hover:bg-blue-700 text-white text-center py-2 rounded-lg text-sm font-medium transition-colors">
+                            View Details
+                        </a>
+                        <a href="{% url 'analytics:subject_dashboard' subject.pk %}" 
+                           class="flex-1 bg-purple-600 hover:bg-purple-700 text-white text-center py-2 rounded-lg text-sm font-medium transition-colors">
+                            Analytics
+                        </a>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <!-- Empty State -->
+        <div class="bg-white rounded-2xl shadow-xl p-12 text-center">
+            <div class="text-6xl mb-4">📚</div>
+            <h3 class="text-2xl font-bold text-gray-900 mb-2">No subjects yet</h3>
+            <p class="text-gray-600 mb-8">Upload question papers or create a subject manually to get started</p>
+            <div class="flex justify-center gap-4">
+                <a href="{% url 'papers:upload_generic' %}" 
+                   class="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-lg font-semibold shadow-lg hover:shadow-xl transition-all">
+                    Upload Papers
+                </a>
+                <a href="{% url 'subjects:create' %}" 
+                   class="bg-green-600 hover:bg-green-700 text-white px-8 py-3 rounded-lg font-semibold shadow-lg hover:shadow-xl transition-all">
+                    Create Subject
+                </a>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

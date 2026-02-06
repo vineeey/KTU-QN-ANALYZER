@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>{{ report.title }} - PYQ Analysis Report</title>
+    <style>
+        @page {
+            size: A4;
+            margin: 2cm;
+            @top-center {
+                content: "PYQ Analysis Report";
+                font-size: 10px;
+                color: #666;
+            }
+            @bottom-center {
+                content: "Page " counter(page) " of " counter(pages);
+                font-size: 10px;
+                color: #666;
+            }
+        }
+        
+        * {
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            font-size: 11pt;
+            line-height: 1.5;
+            color: #333;
+            margin: 0;
+            padding: 0;
+        }
+        
+        h1 { font-size: 24pt; margin-bottom: 10pt; color: #1e40af; }
+        h2 { font-size: 16pt; margin-top: 20pt; margin-bottom: 10pt; color: #374151; border-bottom: 2px solid #e5e7eb; padding-bottom: 5pt; }
+        h3 { font-size: 14pt; margin-top: 15pt; margin-bottom: 8pt; color: #4b5563; }
+        h4 { font-size: 12pt; margin-top: 12pt; margin-bottom: 6pt; color: #6b7280; }
+        
+        p { margin: 0 0 10pt 0; }
+        
+        .cover {
+            text-align: center;
+            padding-top: 150pt;
+            page-break-after: always;
+        }
+        
+        .cover h1 {
+            font-size: 28pt;
+            color: #1e40af;
+            margin-bottom: 20pt;
+        }
+        
+        .cover .subtitle {
+            font-size: 14pt;
+            color: #6b7280;
+            margin-bottom: 50pt;
+        }
+        
+        .cover .meta {
+            font-size: 11pt;
+            color: #9ca3af;
+        }
+        
+        .cover .meta p {
+            margin: 5pt 0;
+        }
+        
+        .toc {
+            page-break-after: always;
+        }
+        
+        .toc ul {
+            list-style: none;
+            padding: 0;
+        }
+        
+        .toc li {
+            padding: 5pt 0;
+            border-bottom: 1px dotted #d1d5db;
+        }
+        
+        .toc a {
+            text-decoration: none;
+            color: #1e40af;
+        }
+        
+        .section {
+            page-break-before: always;
+        }
+        
+        .section:first-of-type {
+            page-break-before: avoid;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15pt 0;
+            font-size: 10pt;
+        }
+        
+        th, td {
+            border: 1px solid #e5e7eb;
+            padding: 8pt;
+            text-align: left;
+        }
+        
+        th {
+            background-color: #f3f4f6;
+            font-weight: 600;
+            color: #374151;
+        }
+        
+        tr:nth-child(even) {
+            background-color: #f9fafb;
+        }
+        
+        .stats-grid {
+            display: table;
+            width: 100%;
+            margin: 15pt 0;
+        }
+        
+        .stat-box {
+            display: table-cell;
+            width: 25%;
+            padding: 10pt;
+            text-align: center;
+            background-color: #f3f4f6;
+            border: 1px solid #e5e7eb;
+        }
+        
+        .stat-box .value {
+            font-size: 24pt;
+            font-weight: 700;
+            color: #1e40af;
+        }
+        
+        .stat-box .label {
+            font-size: 9pt;
+            color: #6b7280;
+            text-transform: uppercase;
+        }
+        
+        .progress-bar {
+            background-color: #e5e7eb;
+            height: 8pt;
+            border-radius: 4pt;
+            margin: 5pt 0;
+        }
+        
+        .progress-bar .fill {
+            background-color: #4f46e5;
+            height: 100%;
+            border-radius: 4pt;
+        }
+        
+        .badge {
+            display: inline-block;
+            padding: 2pt 8pt;
+            border-radius: 10pt;
+            font-size: 9pt;
+            font-weight: 500;
+        }
+        
+        .badge-easy { background-color: #dcfce7; color: #166534; }
+        .badge-medium { background-color: #fef9c3; color: #854d0e; }
+        .badge-hard { background-color: #fee2e2; color: #991b1b; }
+        .badge-module { background-color: #e0e7ff; color: #3730a3; }
+        
+        .question-list {
+            margin: 10pt 0;
+        }
+        
+        .question-item {
+            padding: 10pt;
+            margin: 5pt 0;
+            background-color: #f9fafb;
+            border-left: 3pt solid #4f46e5;
+        }
+        
+        .question-text {
+            margin-bottom: 5pt;
+        }
+        
+        .question-meta {
+            font-size: 9pt;
+            color: #6b7280;
+        }
+        
+        .chart-placeholder {
+            background-color: #f3f4f6;
+            border: 1px dashed #d1d5db;
+            padding: 40pt;
+            text-align: center;
+            color: #9ca3af;
+            margin: 15pt 0;
+        }
+        
+        .footer {
+            margin-top: 30pt;
+            padding-top: 10pt;
+            border-top: 1px solid #e5e7eb;
+            font-size: 9pt;
+            color: #9ca3af;
+            text-align: center;
+        }
+        
+        .repeated-marker {
+            color: #f59e0b;
+            font-weight: 600;
+        }
+        
+        .important-text {
+            background-color: #fef3c7;
+            padding: 2pt 4pt;
+        }
+    </style>
+</head>
+<body>
+    <!-- Cover Page -->
+    <div class="cover">
+        <h1>{{ report.title }}</h1>
+        <p class="subtitle">Previous Year Question Paper Analysis Report</p>
+        
+        <div class="meta">
+            <p><strong>Subject:</strong> {{ subject.name }} ({{ subject.code }})</p>
+            <p><strong>Scheme:</strong> {{ subject.scheme_year }}</p>
+            <p><strong>Generated:</strong> {{ report.generated_at|date:"F j, Y" }}</p>
+            <p><strong>Papers Analyzed:</strong> {{ stats.total_papers }}</p>
+        </div>
+    </div>
+    
+    <!-- Table of Contents -->
+    <div class="toc">
+        <h2>Table of Contents</h2>
+        <ul>
+            <li><a href="#summary">Executive Summary</a></li>
+            <li><a href="#overview">Subject Overview</a></li>
+            <li><a href="#module-analysis">Module-wise Analysis</a></li>
+            <li><a href="#bloom-analysis">Bloom's Taxonomy Analysis</a></li>
+            <li><a href="#difficulty-analysis">Difficulty Distribution</a></li>
+            <li><a href="#repeated-questions">Repeated Questions</a></li>
+            {% if include_question_list %}
+            <li><a href="#question-list">Complete Question List</a></li>
+            {% endif %}
+        </ul>
+    </div>
+    
+    <!-- Executive Summary -->
+    <div class="section" id="summary">
+        <h2>Executive Summary</h2>
+        
+        <p>This report provides a comprehensive analysis of {{ stats.total_papers }} question papers for {{ subject.name }} ({{ subject.code }}) under the {{ subject.scheme_year }} scheme.</p>
+        
+        <div class="stats-grid">
+            <div class="stat-box">
+                <div class="value">{{ stats.total_papers }}</div>
+                <div class="label">Papers Analyzed</div>
+            </div>
+            <div class="stat-box">
+                <div class="value">{{ stats.total_questions }}</div>
+                <div class="label">Total Questions</div>
+            </div>
+            <div class="stat-box">
+                <div class="value">{{ stats.unique_questions }}</div>
+                <div class="label">Unique Questions</div>
+            </div>
+            <div class="stat-box">
+                <div class="value">{{ stats.repeated_percentage }}%</div>
+                <div class="label">Repeat Rate</div>
+            </div>
+        </div>
+        
+        <h3>Key Findings</h3>
+        <ul>
+            <li>{{ stats.total_questions }} questions were extracted and analyzed across {{ stats.total_papers }} papers.</li>
+            <li>{{ stats.repeated_questions }} questions ({{ stats.repeated_percentage }}%) were found to be repeated across multiple papers.</li>
+            <li>The most frequently asked module is <strong>{{ stats.most_asked_module }}</strong> with {{ stats.most_asked_module_count }} questions.</li>
+            <li>Classification accuracy: {{ stats.classification_rate }}% of questions were successfully classified.</li>
+        </ul>
+    </div>
+    
+    <!-- Subject Overview -->
+    <div class="section" id="overview">
+        <h2>Subject Overview</h2>
+        
+        <table>
+            <tr>
+                <th>Property</th>
+                <th>Value</th>
+            </tr>
+            <tr>
+                <td>Subject Name</td>
+                <td>{{ subject.name }}</td>
+            </tr>
+            <tr>
+                <td>Subject Code</td>
+                <td>{{ subject.code }}</td>
+            </tr>
+            <tr>
+                <td>Scheme Year</td>
+                <td>{{ subject.scheme_year }}</td>
+            </tr>
+            <tr>
+                <td>Number of Modules</td>
+                <td>{{ subject.num_modules }}</td>
+            </tr>
+            <tr>
+                <td>Papers Analyzed</td>
+                <td>{{ stats.total_papers }}</td>
+            </tr>
+            <tr>
+                <td>Year Range</td>
+                <td>{{ stats.year_range }}</td>
+            </tr>
+        </table>
+        
+        <h3>Papers Included</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Paper</th>
+                    <th>Month/Year</th>
+                    <th>Questions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for paper in papers %}
+                <tr>
+                    <td>{{ paper.name }}</td>
+                    <td>{{ paper.exam_month }}/{{ paper.exam_year }}</td>
+                    <td>{{ paper.questions_count }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    
+    <!-- Module Analysis -->
+    <div class="section" id="module-analysis">
+        <h2>Module-wise Analysis</h2>
+        
+        <p>Questions distribution across the {{ subject.num_modules }} modules of the syllabus:</p>
+        
+        <table>
+            <thead>
+                <tr>
+                    <th>Module</th>
+                    <th>Questions</th>
+                    <th>Percentage</th>
+                    <th>Distribution</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for module in module_stats %}
+                <tr>
+                    <td>{{ module.name }}</td>
+                    <td>{{ module.count }}</td>
+                    <td>{{ module.percentage }}%</td>
+                    <td>
+                        <div class="progress-bar">
+                            <div class="fill" style="width: {{ module.percentage }}%"></div>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        
+        {% for module in module_stats %}
+        <h3>{{ module.name }}</h3>
+        <p><strong>Coverage:</strong> {{ module.percentage }}% ({{ module.count }} questions)</p>
+        
+        {% if module.topics %}
+        <p><strong>Topics Covered:</strong></p>
+        <ul>
+            {% for topic in module.topics %}
+            <li>{{ topic.name }}: {{ topic.count }} questions</li>
+            {% endfor %}
+        </ul>
+        {% endif %}
+        
+        <p><strong>Difficulty Breakdown:</strong></p>
+        <ul>
+            <li>Easy: {{ module.easy }} questions</li>
+            <li>Medium: {{ module.medium }} questions</li>
+            <li>Hard: {{ module.hard }} questions</li>
+        </ul>
+        {% endfor %}
+    </div>
+    
+    <!-- Bloom's Taxonomy Analysis -->
+    <div class="section" id="bloom-analysis">
+        <h2>Bloom's Taxonomy Analysis</h2>
+        
+        <p>Distribution of questions according to Bloom's Taxonomy cognitive levels:</p>
+        
+        <table>
+            <thead>
+                <tr>
+                    <th>Level</th>
+                    <th>Description</th>
+                    <th>Questions</th>
+                    <th>Percentage</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for level in bloom_stats %}
+                <tr>
+                    <td><strong>{{ level.name }}</strong></td>
+                    <td>{{ level.description }}</td>
+                    <td>{{ level.count }}</td>
+                    <td>{{ level.percentage }}%</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        
+        <h3>Cognitive Level Summary</h3>
+        <ul>
+            <li><strong>Lower Order Thinking (Remember, Understand, Apply):</strong> {{ stats.lower_order_count }} questions ({{ stats.lower_order_percentage }}%)</li>
+            <li><strong>Higher Order Thinking (Analyze, Evaluate, Create):</strong> {{ stats.higher_order_count }} questions ({{ stats.higher_order_percentage }}%)</li>
+        </ul>
+    </div>
+    
+    <!-- Difficulty Analysis -->
+    <div class="section" id="difficulty-analysis">
+        <h2>Difficulty Distribution</h2>
+        
+        <table>
+            <thead>
+                <tr>
+                    <th>Difficulty</th>
+                    <th>Questions</th>
+                    <th>Percentage</th>
+                    <th>Distribution</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><span class="badge badge-easy">Easy</span></td>
+                    <td>{{ stats.easy_count }}</td>
+                    <td>{{ stats.easy_percentage }}%</td>
+                    <td>
+                        <div class="progress-bar">
+                            <div class="fill" style="width: {{ stats.easy_percentage }}%; background-color: #22c55e;"></div>
+                        </div>
+                    </td>
+                </tr>
+                <tr>
+                    <td><span class="badge badge-medium">Medium</span></td>
+                    <td>{{ stats.medium_count }}</td>
+                    <td>{{ stats.medium_percentage }}%</td>
+                    <td>
+                        <div class="progress-bar">
+                            <div class="fill" style="width: {{ stats.medium_percentage }}%; background-color: #eab308;"></div>
+                        </div>
+                    </td>
+                </tr>
+                <tr>
+                    <td><span class="badge badge-hard">Hard</span></td>
+                    <td>{{ stats.hard_count }}</td>
+                    <td>{{ stats.hard_percentage }}%</td>
+                    <td>
+                        <div class="progress-bar">
+                            <div class="fill" style="width: {{ stats.hard_percentage }}%; background-color: #ef4444;"></div>
+                        </div>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    
+    <!-- Repeated Questions -->
+    <div class="section" id="repeated-questions">
+        <h2>Repeated Questions</h2>
+        
+        <p>The following questions have appeared multiple times across different examination papers:</p>
+        
+        <table>
+            <thead>
+                <tr>
+                    <th width="60%">Question</th>
+                    <th>Times Repeated</th>
+                    <th>Years</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for cluster in repeated_questions %}
+                <tr>
+                    <td>{{ cluster.representative_text|truncatechars:150 }}</td>
+                    <td><span class="repeated-marker">{{ cluster.question_count }}x</span></td>
+                    <td>{{ cluster.years_appeared|join:", " }}</td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="3" style="text-align: center; color: #9ca3af;">No repeated questions found.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    
+    {% if include_question_list %}
+    <!-- Complete Question List -->
+    <div class="section" id="question-list">
+        <h2>Complete Question List</h2>
+        
+        {% for module in modules_with_questions %}
+        <h3>{{ module.name }}</h3>
+        
+        <div class="question-list">
+            {% for question in module.questions %}
+            <div class="question-item">
+                <div class="question-text">
+                    <strong>Q{{ forloop.counter }}.</strong> {{ question.text }}
+                </div>
+                <div class="question-meta">
+                    <span class="badge badge-{{ question.difficulty }}">{{ question.difficulty }}</span>
+                    <span class="badge badge-module">{{ question.bloom_level }}</span>
+                    • {{ question.marks }} marks
+                    • {{ question.paper.exam_month }}/{{ question.paper.exam_year }}
+                    {% if question.is_repeated %}<span class="repeated-marker">★ Repeated</span>{% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% empty %}
+        <p style="color: #9ca3af; text-align: center;">No questions available.</p>
+        {% endfor %}
+    </div>
+    {% endif %}
+    
+    <!-- Footer -->
+    <div class="footer">
+        <p>Generated by PYQ Analyzer on {{ report.generated_at|date:"F j, Y, g:i a" }}</p>
+        <p>This report was generated automatically using AI-powered analysis.</p>
+    </div>
+</body>
+</html>

@@ -1,0 +1,18 @@
+{% extends 'base/base.html' %}
+
+{% block title %}Delete Paper{% endblock %}
+
+{% block content %}
+<div class="max-w-xl mx-auto px-4 py-12">
+  <div class="bg-white rounded-lg border border-gray-200 p-6">
+    <h1 class="text-xl font-semibold text-gray-900">Delete paper</h1>
+    <p class="mt-2 text-sm text-gray-700">Are you sure you want to delete <span class="font-medium">{{ object.title }}</span>?</p>
+
+    <form method="post" class="mt-6 flex gap-2">
+      {% csrf_token %}
+      <a class="px-4 py-2 rounded-md bg-gray-100 text-gray-800 hover:bg-gray-200 text-sm" href="{% url 'papers:detail' pk=object.id %}">Cancel</a>
+      <button class="px-4 py-2 rounded-md bg-red-600 text-white hover:bg-red-700 text-sm" type="submit">Delete</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

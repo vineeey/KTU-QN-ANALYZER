@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Module {{ module.number }} – {{ subject.name }}</title>
+    <style>
+        @page { margin: 2cm; }
+        body { font-family: Arial, sans-serif; color: #1f2937; line-height: 1.6; margin: 0 auto; max-width: 960px; padding: 8px 12px 32px 12px; }
+        h1 { font-size: 24px; margin-bottom: 6px; }
+        h2 { font-size: 18px; margin: 18px 0 6px; border-bottom: 1px solid #d1d5db; padding-bottom: 4px; }
+        h3 { font-size: 15px; margin: 12px 0 6px; }
+        p { margin: 4px 0 8px; }
+        ul { margin: 6px 0 10px 18px; padding: 0; }
+        li { margin: 4px 0; }
+        .muted { color: #4b5563; font-size: 12px; }
+        .section { margin-top: 16px; }
+        .qn-label { font-weight: bold; }
+        .marks { font-style: italic; color: #4b5563; }
+        .priority-title { font-weight: bold; margin: 8px 0 4px; }
+        .priority-item { margin: 4px 0; }
+        .study-tier { margin: 6px 0; }
+    </style>
+</head>
+<body>
+    <h1>Module {{ module.number }} – {{ subject.name }}{% if subject.year %} (KTU {{ subject.year }} Scheme){% endif %}</h1>
+    <p class="muted">Exam-ready module summary. Total questions: {{ total_questions }} · Part A: {{ total_part_a }} · Part B: {{ total_part_b }}</p>
+
+    <div class="section">
+        <h2>PART A (3 Marks each)</h2>
+        <p>(Qn {% if part_a_numbers %}{{ part_a_numbers|join:', ' }}{% else %}–{% endif %} belong to Module {{ module.number }})</p>
+        {% for year, qs in part_a_by_year.items %}
+            <h3>{{ year }}</h3>
+            <ul>
+                {% for q in qs %}
+                    <li>{{ q.text }} — <span class="marks">({{ q.paper.year|default:year }}, {{ q.marks|default:'3' }} marks)</span></li>
+                {% endfor %}
+            </ul>
+        {% empty %}
+            <p>No Part A questions.</p>
+        {% endfor %}
+    </div>
+
+    <div class="section">
+        <h2>PART B (14 Marks each)</h2>
+        <p>(Qn {% if part_b_numbers %}{{ part_b_numbers|join:', ' }}{% else %}–{% endif %} belong to Module {{ module.number }})</p>
+        {% for year, qs in part_b_by_year.items %}
+            <h3>{{ year }}</h3>
+            {% for q in qs %}
+                <div class="priority-item">
+                    <div class="qn-label">Qn {{ q.question_number }}</div>
+                    <ul>
+                        <li>{{ q.text }} — <span class="marks">({{ q.paper.year|default:year }}, {{ q.marks|default:'14' }} marks)</span></li>
+                    </ul>
+                </div>
+            {% endfor %}
+        {% empty %}
+            <p>No Part B questions.</p>
+        {% endfor %}
+    </div>
+
+    <div class="section">
+        <h2>✅ Module {{ module.number }} — Repeated Question Analysis (Prioritized List)</h2>
+        <p class="muted">(Highest repeated = highest priority)</p>
+
+        {% for tier, clusters in topics_by_tier.items %}
+            {% if tier == 'Top Priority' %}
+                <div class="priority-title">TOP PRIORITY — Repeated 4–6 Times</div>
+            {% elif tier == 'High Priority' %}
+                <div class="priority-title">HIGH PRIORITY — Repeated 3 Times</div>
+            {% elif tier == 'Medium Priority' %}
+                <div class="priority-title">MEDIUM PRIORITY — Repeated 2 Times</div>
+            {% else %}
+                <div class="priority-title">LOW PRIORITY — Appears Only Once</div>
+            {% endif %}
+
+            {% if clusters %}
+                {% for c in clusters %}
+                    <div class="priority-item">
+                        <strong>{{ forloop.counter }}. {{ c.topic_name }}</strong><br>
+                        <span class="marks">Appears in: {% if c.years_appeared %}{{ c.years_appeared|join:', ' }}{% else %}N/A{% endif %}</span><br>
+                        <span class="marks">{{ c.representative_text|default:'' }}</span>
+                    </div>
+                {% endfor %}
+            {% else %}
+                <div class="priority-item">No topics in this tier.</div>
+            {% endif %}
+        {% endfor %}
+    </div>
+
+    <div class="section">
+        <h2>FINAL PRIORITIZED STUDY ORDER — Module {{ module.number }}</h2>
+        <div class="study-tier">
+            <strong>Tier 1 (Must learn first)</strong>
+            <ol>
+                {% for item in study_order_by_tier.tier_1 %}
+                    <li>{{ item.topic }}</li>
+                {% empty %}
+                    <li>No topics in this tier.</li>
+                {% endfor %}
+            </ol>
+        </div>
+        <div class="study-tier">
+            <strong>Tier 2</strong>
+            <ol>
+                {% for item in study_order_by_tier.tier_2 %}
+                    <li>{{ item.topic }}</li>
+                {% empty %}
+                    <li>No topics in this tier.</li>
+                {% endfor %}
+            </ol>
+        </div>
+        <div class="study-tier">
+            <strong>Tier 3</strong>
+            <ol>
+                {% for item in study_order_by_tier.tier_3 %}
+                    <li>{{ item.topic }}</li>
+                {% empty %}
+                    <li>No topics in this tier.</li>
+                {% endfor %}
+            </ol>
+        </div>
+        <div class="study-tier">
+            <strong>Tier 4</strong>
+            <ol>
+                {% for item in study_order_by_tier.tier_4 %}
+                    <li>{{ item.topic }}</li>
+                {% empty %}
+                    <li>No topics in this tier.</li>
+                {% endfor %}
+            </ol>
+        </div>
+    </div>
+</body>
+</html>

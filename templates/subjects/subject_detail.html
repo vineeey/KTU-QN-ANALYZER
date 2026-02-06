@@ -1,0 +1,420 @@
+{% extends 'base/base.html' %}
+{% load static %}
+
+{% block title %}{{ subject.name }} - PYQ Analyzer{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 py-8">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        
+        <!-- Header -->
+        <div class="mb-8">
+            <div class="flex items-center justify-between mb-4">
+                <div>
+                    <div class="flex items-center gap-3 mb-2">
+                        <a href="{% url 'subjects:list' %}" 
+                           class="text-gray-500 hover:text-gray-700 transition-colors">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                            </svg>
+                        </a>
+                        <h1 class="text-4xl font-bold text-gray-900">{{ subject.name }}</h1>
+                    </div>
+                    <p class="text-gray-600 ml-9">
+                        {{ subject.code|default:"" }} • {{ subject.university|default:"Unknown University" }}
+                    </p>
+                </div>
+                <div class="flex gap-3">
+                    <a href="{% url 'papers:upload' subject.pk %}" 
+                       class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-semibold transition-colors flex items-center">
+                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                        </svg>
+                        Upload Papers
+                    </a>
+                    <a href="{% url 'analytics:subject_dashboard' subject.pk %}" 
+                       class="bg-purple-600 hover:bg-purple-700 text-white px-6 py-3 rounded-lg font-semibold transition-colors flex items-center">
+                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                        </svg>
+                        View Analytics
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Stats Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+            <div class="bg-white rounded-xl shadow-md p-6">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm text-gray-600 mb-1">Total Papers</p>
+                        <p class="text-3xl font-bold text-blue-600">{{ papers_total }}</p>
+                    </div>
+                    <div class="text-4xl">📄</div>
+                </div>
+            </div>
+            
+            <div class="bg-white rounded-xl shadow-md p-6">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm text-gray-600 mb-1">Questions</p>
+                        <p class="text-3xl font-bold text-green-600">{{ questions_count }}</p>
+                    </div>
+                    <div class="text-4xl">❓</div>
+                </div>
+            </div>
+            
+            <div class="bg-white rounded-xl shadow-md p-6">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm text-gray-600 mb-1">Completed</p>
+                        <p class="text-3xl font-bold text-purple-600">{{ papers_completed }}</p>
+                    </div>
+                    <div class="text-4xl">✅</div>
+                </div>
+            </div>
+            
+            <div class="bg-white rounded-xl shadow-md p-6">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm text-gray-600 mb-1">Processing</p>
+                        <p class="text-3xl font-bold text-orange-600">{{ papers_processing|add:papers_pending }}</p>
+                    </div>
+                    <div class="text-4xl">⏳</div>
+                </div>
+            </div>
+        </div>
+
+        {% if has_processing or has_pending %}
+        <!-- Processing Control Panel -->
+        <div class="bg-gradient-to-r from-blue-50 to-purple-50 border border-blue-200 rounded-xl p-6 mb-8">
+            <div class="flex items-center justify-between mb-4">
+                <div class="flex items-center">
+                    {% if has_processing %}
+                    <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mr-3"></div>
+                    <div>
+                        <p class="text-blue-900 font-bold text-lg">Processing Papers...</p>
+                        <p class="text-blue-700 text-sm" id="status-message">Real-time status updates below</p>
+                    </div>
+                    {% else %}
+                    <div>
+                        <p class="text-gray-900 font-bold text-lg">Papers Ready for Processing</p>
+                        <p class="text-gray-700 text-sm">{{ papers_pending }} paper(s) waiting to be analyzed</p>
+                    </div>
+                    {% endif %}
+                </div>
+                <button onclick="startProcessingAll()" 
+                        class="bg-green-600 hover:bg-green-700 text-white px-8 py-3 rounded-lg font-bold transition-colors flex items-center shadow-lg"
+                        id="start-btn">
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    Start Processing All
+                </button>
+            </div>
+            
+            <!-- Real-time progress bar -->
+            <div class="bg-white rounded-lg p-4">
+                <div class="flex justify-between text-sm text-gray-600 mb-2">
+                    <span>Overall Progress</span>
+                    <span id="overall-progress-text">0%</span>
+                </div>
+                <div class="w-full bg-gray-200 rounded-full h-4">
+                    <div id="overall-progress-bar" class="bg-gradient-to-r from-blue-600 to-purple-600 h-4 rounded-full transition-all duration-500" style="width: 0%"></div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Modules Section -->
+        <div class="bg-white rounded-xl shadow-lg p-8 mb-8">
+            <div class="flex items-center justify-between mb-6">
+                <h2 class="text-2xl font-bold text-gray-900">Modules</h2>
+                <a href="{% url 'subjects:module_create' subject.pk %}" 
+                   class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center">
+                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                    </svg>
+                    Add Module
+                </a>
+            </div>
+            
+            {% if subject.modules.all %}
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {% for module in subject.modules.all %}
+                <div class="border border-gray-200 rounded-lg p-4 hover:border-blue-500 hover:shadow-md transition-all">
+                    <div class="flex items-center justify-between mb-2">
+                        <h3 class="font-bold text-gray-900">Module {{ module.number }}</h3>
+                        <span class="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">{{ module.weightage }}%</span>
+                    </div>
+                    <p class="text-sm text-gray-600 mb-3">{{ module.name }}</p>
+                    <div class="flex gap-2">
+                        <a href="{% url 'subjects:module_update' module.pk %}" 
+                           class="text-sm text-blue-600 hover:text-blue-700 font-medium">Edit</a>
+                        <a href="{% url 'analytics:module' subject.pk module.number %}" 
+                           class="text-sm text-purple-600 hover:text-purple-700 font-medium">Analytics</a>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="text-center py-8 text-gray-500">
+                <p class="mb-4">No modules yet. Add modules to organize your content.</p>
+                <a href="{% url 'subjects:module_create' subject.pk %}" 
+                   class="text-blue-600 hover:text-blue-700 font-medium">+ Add First Module</a>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Papers Section with Real-time Status -->
+        <div class="bg-white rounded-xl shadow-lg p-8">
+            <h2 class="text-2xl font-bold text-gray-900 mb-6">Uploaded Papers</h2>
+            
+            {% if subject.papers.all %}
+            <div class="space-y-3" id="papers-container">
+                {% for paper in subject.papers.all %}
+                <div class="border border-gray-200 rounded-lg p-4 hover:border-blue-500 transition-all" id="paper-{{ paper.id }}" data-paper-id="{{ paper.id }}">
+                    <div class="flex items-center justify-between mb-2">
+                        <div class="flex-1">
+                            <h3 class="font-semibold text-gray-900 mb-1">{{ paper.title }}</h3>
+                            <div class="flex items-center gap-4 text-sm text-gray-600 mb-2">
+                                <span>📅 Year: {{ paper.year }}</span>
+                                <span>❓ Questions: <span class="paper-questions">{{ paper.get_question_count }}</span></span>
+                                <span class="paper-status-badge">
+                                    {% if paper.status == 'completed' %}
+                                        <span class="text-green-600 font-medium">✓ Completed</span>
+                                    {% elif paper.status == 'processing' %}
+                                        <span class="text-blue-600 font-medium">⏳ Processing</span>
+                                    {% elif paper.status == 'pending' %}
+                                        <span class="text-orange-600 font-medium">⏸️ Pending</span>
+                                    {% elif paper.status == 'failed' %}
+                                        <span class="text-red-600 font-medium">❌ Failed</span>
+                                    {% endif %}
+                                </span>
+                            </div>
+                            
+                            <!-- Real-time status detail -->
+                            <div class="paper-status-detail text-sm text-gray-700 mb-2">
+                                <span class="font-medium">Status:</span> <span class="detail-text">{{ paper.status_detail|default:"Ready" }}</span>
+                            </div>
+                            
+                            <!-- Progress bar for processing papers -->
+                            {% if paper.status == 'processing' or paper.status == 'pending' %}
+                            <div class="mt-2">
+                                <div class="flex justify-between text-xs text-gray-600 mb-1">
+                                    <span>Progress</span>
+                                    <span class="paper-progress-text">{{ paper.progress_percent }}%</span>
+                                </div>
+                                <div class="w-full bg-gray-200 rounded-full h-2">
+                                    <div class="paper-progress-bar bg-blue-600 h-2 rounded-full transition-all duration-300" style="width: {{ paper.progress_percent }}%"></div>
+                                </div>
+                                <div class="flex gap-4 text-xs text-gray-600 mt-1">
+                                    <span>📝 Extracted: <span class="paper-extracted">{{ paper.questions_extracted }}</span></span>
+                                    <span>🏷️ Classified: <span class="paper-classified">{{ paper.questions_classified }}</span></span>
+                                </div>
+                            </div>
+                            {% endif %}
+                        </div>
+                        <div class="flex gap-2">
+                            {% if paper.status == 'pending' %}
+                            <button onclick="startProcessingSingle('{{ paper.id }}')" 
+                                    class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+                                ▶ Process
+                            </button>
+                            {% endif %}
+                            <a href="{% url 'papers:detail' paper.pk %}" 
+                               class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+                                View
+                            </a>
+                            <a href="{% url 'papers:delete' paper.pk %}" 
+                               class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+                                Delete
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="text-center py-12 text-gray-500">
+                <div class="text-5xl mb-4">📄</div>
+                <p class="mb-4">No papers uploaded yet</p>
+                <a href="{% url 'papers:upload' subject.pk %}" 
+                   class="text-blue-600 hover:text-blue-700 font-medium">+ Upload First Paper</a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script>
+const subjectId = '{{ subject.id }}';
+let pollInterval = null;
+
+// Start processing all pending papers
+async function startProcessingAll() {
+    const btn = document.getElementById('start-btn');
+    btn.disabled = true;
+    btn.innerHTML = '<svg class="animate-spin h-5 w-5 mr-2 inline" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>Starting...';
+    
+    try {
+        const response = await fetch('{% url "papers:start_processing" %}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: `subject_id=${subjectId}`
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            btn.innerHTML = '✓ Processing Started';
+            btn.classList.replace('bg-green-600', 'bg-gray-600');
+            startPolling();
+        } else {
+            alert(data.message);
+            btn.disabled = false;
+            btn.innerHTML = '<svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>Start Processing All';
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('Failed to start processing');
+        btn.disabled = false;
+    }
+}
+
+// Start processing single paper
+async function startProcessingSingle(paperId) {
+    try {
+        const response = await fetch('{% url "papers:start_processing" %}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: `paper_id=${paperId}`
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            startPolling();
+        } else {
+            alert(data.message);
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('Failed to start processing');
+    }
+}
+
+// Poll for status updates
+async function updateStatus() {
+    try {
+        const response = await fetch(`/papers/api/subject/${subjectId}/status/`);
+        const data = await response.json();
+        
+        // Update overall progress
+        const totalPapers = data.stats.total;
+        const completedPapers = data.stats.completed;
+        const processingPapers = data.stats.processing;
+        
+        if (totalPapers > 0) {
+            const overallProgress = Math.round((completedPapers / totalPapers) * 100);
+            document.getElementById('overall-progress-bar').style.width = overallProgress + '%';
+            document.getElementById('overall-progress-text').textContent = overallProgress + '%';
+        }
+        
+        // Update each paper's status
+        data.papers.forEach(paper => {
+            const paperEl = document.getElementById(`paper-${paper.id}`);
+            if (!paperEl) return;
+            
+            // Update status badge
+            const statusBadge = paperEl.querySelector('.paper-status-badge');
+            if (statusBadge) {
+                let badgeHTML = '';
+                switch(paper.status) {
+                    case 'completed':
+                        badgeHTML = '<span class="text-green-600 font-medium">✓ Completed</span>';
+                        break;
+                    case 'processing':
+                        badgeHTML = '<span class="text-blue-600 font-medium">⏳ Processing</span>';
+                        break;
+                    case 'pending':
+                        badgeHTML = '<span class="text-orange-600 font-medium">⏸️ Pending</span>';
+                        break;
+                    case 'failed':
+                        badgeHTML = '<span class="text-red-600 font-medium">❌ Failed</span>';
+                        break;
+                }
+                statusBadge.innerHTML = badgeHTML;
+            }
+            
+            // Update status detail
+            const detailText = paperEl.querySelector('.detail-text');
+            if (detailText && paper.status_detail) {
+                detailText.textContent = paper.status_detail;
+            }
+            
+            // Update progress
+            const progressBar = paperEl.querySelector('.paper-progress-bar');
+            const progressText = paperEl.querySelector('.paper-progress-text');
+            if (progressBar && progressText) {
+                progressBar.style.width = paper.progress_percent + '%';
+                progressText.textContent = paper.progress_percent + '%';
+            }
+            
+            // Update counts
+            const extracted = paperEl.querySelector('.paper-extracted');
+            const classified = paperEl.querySelector('.paper-classified');
+            const questions = paperEl.querySelector('.paper-questions');
+            
+            if (extracted) extracted.textContent = paper.questions_extracted;
+            if (classified) classified.textContent = paper.questions_classified;
+            if (questions && paper.questions_extracted > 0) {
+                questions.textContent = paper.questions_extracted;
+            }
+        });
+        
+        // Stop polling if all done
+        if (processingPapers === 0) {
+            stopPolling();
+            // Reload page to show final results
+            if (completedPapers > 0) {
+                setTimeout(() => location.reload(), 2000);
+            }
+        }
+        
+    } catch (error) {
+        console.error('Status update error:', error);
+    }
+}
+
+function startPolling() {
+    if (pollInterval) return; // Already polling
+    
+    updateStatus(); // Update immediately
+    pollInterval = setInterval(updateStatus, 2000); // Poll every 2 seconds
+}
+
+function stopPolling() {
+    if (pollInterval) {
+        clearInterval(pollInterval);
+        pollInterval = null;
+    }
+}
+
+// Auto-start polling if there are processing papers
+document.addEventListener('DOMContentLoaded', function() {
+    {% if has_processing %}
+    startPolling();
+    {% endif %}
+});
+</script>
+
+{% endblock %}

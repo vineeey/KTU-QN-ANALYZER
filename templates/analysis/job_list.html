@@ -1,0 +1,152 @@
+{% extends 'base/base.html' %}
+{% load static %}
+
+{% block title %}Analysis Jobs - PYQ Analyzer{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 py-12">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        
+        <!-- Header -->
+        <div class="mb-8 animate-slide-up">
+            <h1 class="text-4xl font-bold text-gray-900 mb-2">
+                Analysis Jobs
+            </h1>
+            <p class="text-gray-600 text-lg">
+                Track the status of your paper analysis tasks
+            </p>
+        </div>
+
+        {% if jobs %}
+        <div class="space-y-4">
+            {% for job in jobs %}
+            <div class="card animate-on-scroll">
+                <div class="p-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="flex-1">
+                            <h3 class="text-xl font-bold text-gray-900 mb-1">
+                                {{ job.paper.title }}
+                            </h3>
+                            <p class="text-gray-600 text-sm">
+                                {{ job.paper.subject.name }} - {{ job.paper.year }}
+                            </p>
+                        </div>
+                        
+                        <div class="flex items-center gap-4">
+                            <!-- Status Badge -->
+                            {% if job.status == 'COMPLETED' %}
+                            <span class="bg-green-100 text-green-800 px-4 py-2 rounded-full text-sm font-semibold">
+                                ✓ Completed
+                            </span>
+                            {% elif job.status == 'FAILED' %}
+                            <span class="bg-red-100 text-red-800 px-4 py-2 rounded-full text-sm font-semibold">
+                                ✗ Failed
+                            </span>
+                            {% elif job.status == 'PENDING' %}
+                            <span class="bg-yellow-100 text-yellow-800 px-4 py-2 rounded-full text-sm font-semibold">
+                                ⏳ Pending
+                            </span>
+                            {% else %}
+                            <span class="bg-blue-100 text-blue-800 px-4 py-2 rounded-full text-sm font-semibold">
+                                ⚡ {{ job.status|title }}
+                            </span>
+                            {% endif %}
+                            
+                            <a href="{% url 'analysis:detail' job.pk %}" 
+                               class="text-blue-600 hover:text-blue-700 font-medium">
+                                View Details →
+                            </a>
+                        </div>
+                    </div>
+                    
+                    <!-- Progress Bar -->
+                    {% if job.status not in 'COMPLETED,FAILED' %}
+                    <div class="mb-4">
+                        <div class="flex justify-between text-sm text-gray-600 mb-2">
+                            <span>{{ job.status_detail }}</span>
+                            <span>{{ job.progress }}%</span>
+                        </div>
+                        <div class="w-full bg-gray-200 rounded-full h-2">
+                            <div class="bg-blue-600 h-2 rounded-full transition-all duration-300" 
+                                 style="width: {{ job.progress }}%"></div>
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    <!-- Stats -->
+                    <div class="grid grid-cols-3 gap-4 text-center border-t pt-4">
+                        <div>
+                            <div class="text-2xl font-bold text-gray-900">{{ job.questions_extracted|default:0 }}</div>
+                            <div class="text-xs text-gray-600">Questions Extracted</div>
+                        </div>
+                        <div>
+                            <div class="text-2xl font-bold text-gray-900">{{ job.questions_classified|default:0 }}</div>
+                            <div class="text-xs text-gray-600">Questions Classified</div>
+                        </div>
+                        <div>
+                            <div class="text-2xl font-bold text-gray-900">{{ job.duplicates_found|default:0 }}</div>
+                            <div class="text-xs text-gray-600">Duplicates Found</div>
+                        </div>
+                    </div>
+                    
+                    <!-- Error Message -->
+                    {% if job.error_message %}
+                    <div class="mt-4 bg-red-50 border border-red-200 rounded-lg p-4">
+                        <p class="text-red-800 text-sm">
+                            <strong>Error:</strong> {{ job.error_message }}
+                        </p>
+                    </div>
+                    {% endif %}
+                    
+                    <!-- Timestamps -->
+                    <div class="mt-4 text-xs text-gray-500 flex gap-4">
+                        <span>Created: {{ job.created_at|date:"M d, Y H:i" }}</span>
+                        {% if job.completed_at %}
+                        <span>Completed: {{ job.completed_at|date:"M d, Y H:i" }}</span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        
+        <!-- Pagination -->
+        {% if is_paginated %}
+        <div class="mt-8 flex justify-center">
+            <nav class="flex gap-2">
+                {% if page_obj.has_previous %}
+                <a href="?page=1" class="px-4 py-2 bg-white rounded-lg shadow hover:shadow-md transition-all">First</a>
+                <a href="?page={{ page_obj.previous_page_number }}" class="px-4 py-2 bg-white rounded-lg shadow hover:shadow-md transition-all">Previous</a>
+                {% endif %}
+                
+                <span class="px-4 py-2 bg-blue-600 text-white rounded-lg font-semibold">
+                    Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+                </span>
+                
+                {% if page_obj.has_next %}
+                <a href="?page={{ page_obj.next_page_number }}" class="px-4 py-2 bg-white rounded-lg shadow hover:shadow-md transition-all">Next</a>
+                <a href="?page={{ page_obj.paginator.num_pages }}" class="px-4 py-2 bg-white rounded-lg shadow hover:shadow-md transition-all">Last</a>
+                {% endif %}
+            </nav>
+        </div>
+        {% endif %}
+        
+        {% else %}
+        <!-- Empty State -->
+        <div class="card animate-slide-up">
+            <div class="p-16 text-center">
+                <svg class="w-24 h-24 mx-auto text-gray-300 mb-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                </svg>
+                <h3 class="text-2xl font-bold text-gray-700 mb-2">No Analysis Jobs Yet</h3>
+                <p class="text-gray-500 mb-6">Upload a paper to start analyzing questions</p>
+                <a href="{% url 'papers:upload_generic' %}" class="btn-primary">
+                    Upload Your First Paper
+                </a>
+            </div>
+        </div>
+        {% endif %}
+        
+    </div>
+</div>
+{% endblock %}
