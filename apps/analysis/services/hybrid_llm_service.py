@@ -241,26 +241,23 @@ class HybridLLMService:
     
     def _get_basic_ocr_prompt(self, text: str) -> str:
         """Generate basic OCR cleaning prompt."""
-        return f"""You are an expert at fixing OCR errors in KTU (Kerala Technological University) exam question papers.
+        return f"""You are an expert at cleaning OCR-extracted text from academic examination papers.
 
-Fix the following common OCR errors in the text below:
-- Number confusion: l→1, I→1, O→0, S→5
-- Question numbering: l1→11, Q.I→Q.1
-- Letter confusion: rn→m, vv→w, cl→d
-- Missing/extra spaces in words
-- Broken words across lines
-- Mathematical symbols preservation
-- Mark allocations format: ensure "(X marks)" or "[X marks]"
+**Task:** Fix OCR errors while preserving the exact meaning and structure.
 
-IMPORTANT RULES:
-✓ Preserve the original structure (Part A, Part B, question numbers)
-✓ Keep all part labels, question numbers, and mark allocations
-✓ Preserve mathematical notation and special characters
-✓ Keep line breaks between questions
-✓ Preserve sub-question labels (a), (b), (c)
-✗ Do NOT add explanations or comments
-✗ Do NOT change the meaning of questions
-✗ Do NOT add or remove questions
+**Common OCR Errors to Fix:**
+- Number confusion: l→1, O→0, S→5, I→1
+- Question numbering: "l." → "1.", "Q.l" → "Q.1"
+- Word breaks: "defi ne" → "define", "algo rithm" → "algorithm"
+- Special characters: Replace garbled symbols with correct ones
+- Spacing: Fix missing/extra spaces
+
+**Rules:**
+1. NEVER change the meaning or intent of questions
+2. NEVER add or remove questions
+3. Fix only OCR artifacts, not grammar or style
+4. Preserve technical terms, formulas, and acronyms exactly
+5. Maintain original numbering sequence
 
 TEXT TO CLEAN:
 {text}
@@ -269,41 +266,31 @@ Return ONLY the cleaned text, nothing else."""
     
     def _get_advanced_ocr_prompt(self, text: str, subject: str, year: Optional[str]) -> str:
         """Generate advanced OCR cleaning prompt with context."""
-        year_context = f" from {year}" if year else ""
-        return f"""You are an expert at fixing OCR errors in KTU exam question papers.
+        year_context = f"\nYear: {year}" if year else ""
+        return f"""You are an expert at cleaning OCR-extracted text from academic examination papers.
+
+**Task:** Fix OCR errors while preserving the exact meaning and structure.
+
+**Common OCR Errors to Fix:**
+- Number confusion: l→1, O→0, S→5, I→1
+- Question numbering: "l." → "1.", "Q.l" → "Q.1"
+- Word breaks: "defi ne" → "define", "algo rithm" → "algorithm"
+- Special characters: Replace garbled symbols with correct ones
+- Spacing: Fix missing/extra spaces
+
+**Rules:**
+1. NEVER change the meaning or intent of questions
+2. NEVER add or remove questions
+3. Fix only OCR artifacts, not grammar or style
+4. Preserve technical terms, formulas, and acronyms exactly
+5. Maintain original numbering sequence
 
 Subject: {subject}{year_context}
 
-Fix OCR errors following these rules:
-
-1. QUESTION NUMBERING:
-   - Part A: Questions 1-10 (usually 2-3 marks each)
-   - Part B: Questions 11-20 (usually 14 marks each)
-   - Fix: Q.l → Q.1, Ql1 → Q11, etc.
-
-2. TECHNICAL TERMS:
-   - Preserve domain-specific terminology
-   - Fix common CS terms: "algorithrn" → "algorithm", "rnernory" → "memory"
-
-3. MATHEMATICAL EXPRESSIONS:
-   - Preserve: O(n), ≤, ≥, ∑, ∏, etc.
-   - Fix spacing around operators
-
-4. MARK ALLOCATIONS:
-   - Standard format: "(X marks)" or "[X marks]"
-   - Fix: "(5rnarks)" → "(5 marks)"
-
-5. SPECIAL INSTRUCTIONS:
-   - Preserve "Answer any two questions" type instructions
-   - Keep "OR" separators between alternative questions
-
-6. OR QUESTIONS:
-   - Format: "11. Question A (14 marks)\nOR\n12. Question B (14 marks)"
-
-TEXT TO CLEAN:
+Raw OCR Text:
 {text}
 
-Return ONLY the cleaned text without explanations."""
+Return ONLY the cleaned text, nothing else."""
     
     def _get_batch_ocr_prompt(self, pages: List[str], subject: Optional[str], year: Optional[str]) -> str:
         """Generate batch OCR cleaning prompt for multiple pages."""
@@ -523,54 +510,30 @@ Return the cleaned pages with the same separator format."""
         if marks1 is not None and marks2 is not None:
             marks_info = f"\nQuestion 1 marks: {marks1}\nQuestion 2 marks: {marks2}\n"
         
-        return f"""You are an expert at analyzing exam questions to determine if they test the same concept/knowledge.
+        return f"""You are an expert at comparing academic examination questions.
 
-Two questions are SIMILAR if they:
-✓ Test the same core concept/topic
-✓ Are the same problem type (define/explain/derive/compare/etc.)
-✓ Cover the same topic with minor wording changes
-✓ One is a generalization of the other
+**Task:** Determine if these two questions are asking about the SAME concept/topic.
 
-Two questions are NOT SIMILAR if they:
-✗ Test different concepts/topics
-✗ Are different problem types (e.g., "define" vs "derive")
-✗ Cover different subtopics of same module
-✗ Have significantly different difficulty/depth levels
-
-EXAMPLES:
-
-SIMILAR:
-Q1: "Explain the working of binary search algorithm"
-Q2: "Describe how binary search works"
-→ SIMILAR (same concept, same type)
-
-Q1: "Define recursion with example"
-Q2: "What is recursion? Give an example"
-→ SIMILAR (same concept, minor wording)
-
-NOT SIMILAR:
-Q1: "Define stack data structure"
-Q2: "Implement stack using arrays"
-→ NOT SIMILAR (define vs implement)
-
-Q1: "Explain BFS algorithm"
-Q2: "Explain DFS algorithm"
-→ NOT SIMILAR (different algorithms)
-
-Now analyze these questions:{marks_info}
 Question 1: {q1}
-
 Question 2: {q2}
+{marks_info}
 
-Provide your analysis in this exact format:
-SIMILAR: [YES/NO]
-CONFIDENCE: [0.0-1.0]
-REASON: [Brief explanation in one line]
+**Criteria for SIMILAR:**
+- Testing the exact same concept/algorithm/theory
+- Different wording but same learning objective
+- One is a subset/superset of the other
 
-Example response:
-SIMILAR: YES
-CONFIDENCE: 0.9
-REASON: Both ask to explain the same sorting algorithm with minor wording differences"""
+**Criteria for DIFFERENT:**
+- Different topics/concepts entirely
+- Same domain but different specific topics
+- Different depth levels (conceptual vs implementation)
+
+Respond in this EXACT format:
+VERDICT: [SIMILAR or DIFFERENT]
+CONFIDENCE: [0-100]
+REASONING: [Brief explanation]
+
+Be strict: When in doubt, mark as DIFFERENT."""
     
     def _get_advanced_similarity_prompt(
         self,
@@ -615,14 +578,26 @@ Return JSON format:
         Returns:
             Tuple of (is_similar, confidence, reason)
         """
-        # Try to parse JSON format first
+        # Use the validator to parse the response
+        from .llm_validator import LLMResponseValidator
+        
+        # Try new VERDICT format first
+        try:
+            is_similar, confidence, reason = LLMResponseValidator.parse_similarity_response(response)
+            if reason != "Parse error":
+                return is_similar, confidence, reason
+        except Exception as e:
+            logger.debug(f"Validator parsing failed, trying fallback: {e}")
+        
+        # Try to parse JSON format as fallback
         try:
             data = json.loads(response)
             is_similar = data.get('similar', False)
             confidence = float(data.get('confidence', 0.5))
             reason = data.get('reason', 'LLM analysis')
             return is_similar, confidence, reason
-        except:
+        except Exception as e:
+            logger.error(f"Failed to parse JSON response: {e}")
             pass
         
         # Parse text format

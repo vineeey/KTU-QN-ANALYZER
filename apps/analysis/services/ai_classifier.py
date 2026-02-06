@@ -359,7 +359,8 @@ Type:"""
         try:
             result = self.llm_client.generate(prompt, max_tokens=20, temperature=0.1)
             return result.strip().lower()
-        except:
+        except Exception as e:
+            logger.error(f"Failed to classify question type: {e}")
             return 'theory'
     
     def _classify_difficulty(self, text: str) -> str:
@@ -387,7 +388,8 @@ Difficulty:"""
         try:
             result = self.llm_client.generate(prompt, max_tokens=10, temperature=0.1)
             return result.strip().lower()
-        except:
+        except Exception as e:
+            logger.error(f"Failed to classify difficulty: {e}")
             return 'medium'
     
     def _classify_bloom_level(self, text: str) -> str:
@@ -426,5 +428,6 @@ Level:"""
         try:
             result = self.llm_client.generate(prompt, max_tokens=15, temperature=0.1)
             return result.strip().lower()
-        except:
+        except Exception as e:
+            logger.error(f"Failed to classify Bloom level: {e}")
             return 'understand'

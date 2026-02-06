@@ -463,7 +463,7 @@ class ManualAnalyzeView(LoginRequiredMixin, View):
                     q_num_raw = q_num_raw.replace('l', '1').replace('I', '1').replace(' ', '')
                     try:
                         q_num = int(q_num_raw)
-                    except:
+                    except (ValueError, TypeError):
                         continue
                     
                     if not (11 <= q_num <= 20):
@@ -589,7 +589,7 @@ class ManualAnalyzeView(LoginRequiredMixin, View):
                     q_num_raw = q_num_raw.replace('l', '1').replace('I', '1')
                     try:
                         q_num = int(q_num_raw)
-                    except:
+                    except (ValueError, TypeError):
                         continue
                     
                     if not (11 <= q_num <= 20):
