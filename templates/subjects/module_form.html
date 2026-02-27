@@ -1,0 +1,69 @@
+{% extends 'base/base.html' %}
+{% load static %}
+
+{% block title %}{% if object %}Edit{% else %}Create{% endif %} Module - PYQ Analyzer{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 py-12">
+  <div class="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="bg-white rounded-2xl shadow-xl p-8">
+      <h1 class="text-3xl font-bold text-gray-900 mb-2">{% if object %}Edit Module{% else %}Add Module{% endif %}</h1>
+      {% if subject %}
+        <p class="text-gray-600 mb-6">{{ subject.name }}</p>
+      {% endif %}
+
+      <form method="post">
+        {% csrf_token %}
+
+        <div class="space-y-6">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">Module Name *</label>
+            {{ form.name }}
+          </div>
+
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">Module Number *</label>
+              {{ form.number }}
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">Weightage (%)</label>
+              {{ form.weightage }}
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">Description</label>
+            {{ form.description }}
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">Topics</label>
+            {{ form.topics_text }}
+            {% if form.topics_text.help_text %}
+              <p class="mt-1 text-xs text-gray-500">{{ form.topics_text.help_text }}</p>
+            {% endif %}
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">Keywords</label>
+            {{ form.keywords_text }}
+            {% if form.keywords_text.help_text %}
+              <p class="mt-1 text-xs text-gray-500">{{ form.keywords_text.help_text }}</p>
+            {% endif %}
+          </div>
+        </div>
+
+        <div class="flex gap-3 mt-8">
+          <button type="submit" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg font-semibold transition-colors">{% if object %}Update{% else %}Create{% endif %} Module</button>
+          {% if subject %}
+            <a href="{% url 'subjects:detail' pk=subject.pk %}" class="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 py-3 rounded-lg font-semibold text-center transition-colors">Cancel</a>
+          {% else %}
+            <a href="{% url 'subjects:list' %}" class="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 py-3 rounded-lg font-semibold text-center transition-colors">Cancel</a>
+          {% endif %}
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

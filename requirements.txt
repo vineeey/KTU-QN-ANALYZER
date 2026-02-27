@@ -1,0 +1,59 @@
+# Django Core
+Django>=5.0,<6.0
+django-environ>=0.11.2
+django-extensions>=3.2.3
+
+# Async Task Queue
+django-q2>=1.6.2
+
+# Authentication
+django-allauth>=0.61.1
+
+# AI & ML (CPU-only, no GPU required)
+sentence-transformers>=2.2.2
+torch>=2.1.0          # CPU build sufficient
+scikit-learn>=1.4.0
+scipy>=1.11.4
+numpy>=1.26.3
+hdbscan>=0.8.33       # Optional: alternative clustering algorithm
+
+# LLM integrations (all optional; system falls back gracefully)
+httpx>=0.26.0                   # Ollama API calls
+google-generativeai>=0.3.0      # Google Gemini
+
+# OCR pipeline
+paddleocr>=2.7.0                # Primary OCR engine
+paddlepaddle>=2.5.0             # PaddlePaddle CPU backend
+
+# PDF processing
+pdfplumber>=0.10.3
+PyMuPDF>=1.23.8                 # PDF → image rendering (300 DPI)
+Pillow>=10.2.0
+opencv-python>=4.8.0            # Image preprocessing
+
+# PDF report generation
+WeasyPrint>=60.2
+Jinja2>=3.1.2
+reportlab>=4.0.0
+
+# NLP utilities
+nltk>=3.8.1
+spacy>=3.7.2
+
+# HTTP & utilities
+python-magic>=0.4.27
+
+# Development helpers
+django-debug-toolbar>=4.2.0
+ipython>=8.20.0
+
+# Testing
+pytest>=7.4.4
+pytest-django>=4.7.0
+pytest-cov>=4.1.0
+factory-boy>=3.3.0
+
+# Code quality
+black>=24.1.0
+isort>=5.13.2
+flake8>=7.0.0

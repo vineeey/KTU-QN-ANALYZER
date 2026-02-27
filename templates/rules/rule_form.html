@@ -1,0 +1,26 @@
+{% extends 'base/base.html' %}
+
+{% block title %}{% if object %}Edit{% else %}Create{% endif %} Rule - {{ subject.name }}{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 py-12">
+  <div class="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="bg-white rounded-2xl shadow-xl p-8">
+      <h1 class="text-3xl font-bold text-gray-900 mb-2">{% if object %}Edit Rule{% else %}Create Rule{% endif %}</h1>
+      <p class="text-gray-600 mb-6">{{ subject.name }}</p>
+
+      <form method="post">
+        {% csrf_token %}
+        <div class="space-y-6">
+          {{ form.as_p }}
+        </div>
+
+        <div class="flex gap-3 mt-8">
+          <button type="submit" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg font-semibold transition-colors">Save</button>
+          <a href="{% url 'rules:list' subject_pk=subject.pk %}" class="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 py-3 rounded-lg font-semibold text-center transition-colors">Cancel</a>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

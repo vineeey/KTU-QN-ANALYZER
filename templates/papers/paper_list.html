@@ -1,0 +1,50 @@
+{% extends 'base/base.html' %}
+
+{% block title %}Papers | {{ subject.name }}{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto px-4 py-8">
+  <div class="flex items-start justify-between gap-4">
+    <div>
+      <h1 class="text-2xl font-semibold text-gray-900">Papers</h1>
+      <p class="mt-1 text-sm text-gray-600">{{ subject.name }}</p>
+    </div>
+    <div class="flex gap-2">
+      <a class="px-4 py-2 rounded-md bg-gray-100 text-gray-800 hover:bg-gray-200 text-sm" href="{% url 'subjects:detail' pk=subject.id %}">Back</a>
+      <a class="px-4 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-700 text-sm" href="{% url 'papers:upload' subject_pk=subject.id %}">Upload</a>
+    </div>
+  </div>
+
+  <div class="mt-6 bg-white rounded-lg border border-gray-200 overflow-hidden">
+    <div class="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
+      <h2 class="text-base font-semibold text-gray-900">All Papers</h2>
+      <span class="text-sm text-gray-600">{{ papers|length }} total</span>
+    </div>
+
+    {% if papers %}
+      <div class="divide-y divide-gray-200">
+        {% for paper in papers %}
+          <div class="p-4 flex items-center justify-between gap-4">
+            <div class="min-w-0">
+              <p class="text-sm font-medium text-gray-900 truncate">{{ paper.title }}</p>
+              <p class="mt-1 text-xs text-gray-600">
+                {% if paper.year %}{{ paper.year }}{% endif %}
+                {% if paper.exam_type %}{% if paper.year %} • {% endif %}{{ paper.exam_type }}{% endif %}
+                • <span class="font-medium">{{ paper.get_status_display }}</span>
+              </p>
+            </div>
+            <div class="flex gap-2 shrink-0">
+              <a class="px-3 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-700 text-xs" href="{% url 'papers:detail' pk=paper.id %}">View</a>
+              <a class="px-3 py-2 rounded-md bg-gray-100 text-gray-800 hover:bg-gray-200 text-xs" href="{{ paper.file.url }}" target="_blank" rel="noopener">PDF</a>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="p-6">
+        <p class="text-sm text-gray-600">No papers uploaded yet.</p>
+      </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

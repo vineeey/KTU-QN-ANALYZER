@@ -1,0 +1,62 @@
+{% extends 'base/base.html' %}
+
+{% block title %}Question {{ question.question_number }} - PYQ Analyzer{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 py-8">
+  <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="flex items-start justify-between gap-4 mb-6">
+      <div>
+        <h1 class="text-2xl font-bold text-gray-900">Question {{ question.question_number|default:"" }}</h1>
+        <p class="mt-1 text-sm text-gray-600">{{ question.paper.title }}</p>
+      </div>
+      <div class="flex gap-3">
+        <a href="{% url 'questions:edit' pk=question.pk %}" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-semibold">Edit</a>
+        <a href="{% url 'questions:list' %}" class="bg-gray-200 hover:bg-gray-300 text-gray-800 px-4 py-2 rounded-lg text-sm font-semibold">Back</a>
+      </div>
+    </div>
+
+    <div class="bg-white rounded-xl shadow-lg border border-gray-100 p-6">
+      <div class="prose max-w-none">
+        <p class="text-gray-900 whitespace-pre-line">{{ question.text }}</p>
+      </div>
+
+      <div class="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+        <div class="bg-gray-50 border border-gray-200 rounded-lg p-4">
+          <p class="text-xs text-gray-500">Module</p>
+          <p class="font-semibold text-gray-900">{% if question.module %}M{{ question.module.number }} - {{ question.module.name }}{% else %}-{% endif %}</p>
+        </div>
+        <div class="bg-gray-50 border border-gray-200 rounded-lg p-4">
+          <p class="text-xs text-gray-500">Marks</p>
+          <p class="font-semibold text-gray-900">{{ question.marks|default:"-" }}</p>
+        </div>
+        <div class="bg-gray-50 border border-gray-200 rounded-lg p-4">
+          <p class="text-xs text-gray-500">Difficulty</p>
+          <p class="font-semibold text-gray-900">{{ question.get_difficulty_display|default:"-" }}</p>
+        </div>
+        <div class="bg-gray-50 border border-gray-200 rounded-lg p-4">
+          <p class="text-xs text-gray-500">Bloom Level</p>
+          <p class="font-semibold text-gray-900">{{ question.get_bloom_level_display|default:"-" }}</p>
+        </div>
+      </div>
+
+      {% if question.is_duplicate and question.duplicate_of %}
+        <div class="mt-6 bg-yellow-50 border border-yellow-200 rounded-lg p-4 text-sm text-yellow-900">
+          Duplicate of <a class="font-semibold underline" href="{% url 'questions:detail' pk=question.duplicate_of.pk %}">Question {{ question.duplicate_of.question_number }}</a>
+          {% if question.similarity_score %} (similarity {{ question.similarity_score|floatformat:2 }}){% endif %}
+        </div>
+      {% endif %}
+
+      <div class="mt-6 flex items-center justify-between gap-4">
+        <div class="text-sm text-gray-600">
+          Verified: <span class="font-semibold">{% if question.module_manually_set %}Yes{% else %}No{% endif %}</span>
+        </div>
+        <form method="post" action="{% url 'questions:verify' pk=question.pk %}">
+          {% csrf_token %}
+          <button type="submit" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-semibold">Mark Verified</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

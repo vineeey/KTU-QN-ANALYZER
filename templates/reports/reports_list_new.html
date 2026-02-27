@@ -1,0 +1,90 @@
+{% extends 'base/base.html' %}
+{% load static %}
+
+{% block title %}Reports - {{ subject.name }} - PYQ Analyzer{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 py-8">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        
+        <!-- Header -->
+        <div class="mb-8">
+            <div class="flex items-center gap-3 mb-2">
+                <a href="{% url 'subjects:detail' subject.pk %}" 
+                   class="text-gray-500 hover:text-gray-700 transition-colors">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                    </svg>
+                </a>
+                <h1 class="text-4xl font-bold text-gray-900">Reports</h1>
+            </div>
+            <p class="text-gray-600 ml-9">{{ subject.name }}</p>
+        </div>
+
+        <!-- Reports Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+            <!-- Full Subject Report -->
+            <div class="bg-white rounded-xl shadow-lg p-8 hover:shadow-2xl transition-all border-2 border-blue-100">
+                <div class="text-5xl mb-4">📊</div>
+                <h3 class="text-2xl font-bold text-gray-900 mb-2">Complete Analytics Report</h3>
+                <p class="text-gray-600 mb-6">
+                    Comprehensive report with module statistics, topic analysis, and priority rankings
+                </p>
+                <a href="{% url 'reports:analytics_report' subject.pk %}" 
+                   class="inline-flex items-center bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-semibold transition-colors">
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    Download PDF
+                </a>
+            </div>
+
+            <!-- All Modules Report -->
+            <div class="bg-white rounded-xl shadow-lg p-8 hover:shadow-2xl transition-all border-2 border-purple-100">
+                <div class="text-5xl mb-4">📚</div>
+                <h3 class="text-2xl font-bold text-gray-900 mb-2">All Modules Report</h3>
+                <p class="text-gray-600 mb-6">
+                    Download ZIP file containing separate PDF reports for each module
+                </p>
+                <a href="{% url 'reports:all_modules' subject.pk %}" 
+                   class="inline-flex items-center bg-purple-600 hover:bg-purple-700 text-white px-6 py-3 rounded-lg font-semibold transition-colors">
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    Download ZIP
+                </a>
+            </div>
+        </div>
+
+        <!-- Individual Module Reports -->
+        <div class="bg-white rounded-xl shadow-lg p-8">
+            <h2 class="text-2xl font-bold text-gray-900 mb-6">Module Reports</h2>
+            
+            {% if modules %}
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {% for module in modules %}
+                <div class="border-2 border-gray-200 rounded-lg p-6 hover:border-blue-500 hover:shadow-md transition-all">
+                    <div class="flex items-center justify-between mb-3">
+                        <div>
+                            <h3 class="font-bold text-gray-900 text-lg">Module {{ module.number }}</h3>
+                            <p class="text-sm text-gray-600">{{ module.name }}</p>
+                        </div>
+                        <div class="text-3xl">📄</div>
+                    </div>
+                    <a href="{% url 'reports:module_report' subject.pk module.number %}" 
+                       class="block text-center bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition-colors">
+                        Download PDF
+                    </a>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="text-center py-12 text-gray-500">
+                <div class="text-5xl mb-4">📁</div>
+                <p>No modules available yet</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

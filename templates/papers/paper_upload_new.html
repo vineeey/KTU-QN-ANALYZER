@@ -1,0 +1,402 @@
+{% extends 'base/base.html' %}
+{% load static %}
+
+{% block title %}Upload Question Papers - PYQ Analyzer{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 py-12">
+    <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+        
+        <!-- Header -->
+        <div class="text-center mb-10">
+            <h1 class="text-4xl font-bold text-gray-900 mb-3">
+                📚 Upload Question Papers
+            </h1>
+            <p class="text-lg text-gray-600">
+                Upload your PDF question papers for AI-powered analysis
+            </p>
+        </div>
+
+        <!-- Upload Form Card -->
+        <div class="bg-white rounded-2xl shadow-xl p-8">
+            <form method="post" enctype="multipart/form-data" id="uploadForm">
+                {% csrf_token %}
+                
+                <!-- Subject Information -->
+                <div class="mb-8">
+                    <h2 class="text-xl font-bold text-gray-900 mb-4 flex items-center">
+                        <span class="mr-2">📖</span> Subject Information
+                    </h2>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                Subject Name <span class="text-red-500">*</span>
+                            </label>
+                            <input type="text" 
+                                   name="subject_name" 
+                                   class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                   placeholder="e.g., Data Structures"
+                                   required>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                Subject Code
+                            </label>
+                            <input type="text" 
+                                   name="subject_code" 
+                                   class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                   placeholder="e.g., CS201">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- University Information -->
+                <div class="mb-8">
+                    <h2 class="text-xl font-bold text-gray-900 mb-4 flex items-center">
+                        <span class="mr-2">🏫</span> University Information
+                    </h2>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                University Type <span class="text-red-500">*</span>
+                            </label>
+                            <select name="university_type" 
+                                    id="universityType"
+                                    class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                    required>
+                                <option value="KTU">KTU (Kerala Technological University)</option>
+                                <option value="OTHER">Other University</option>
+                            </select>
+                        </div>
+                        <div id="universityNameField" style="display: none;">
+                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                University Name
+                            </label>
+                            <input type="text" 
+                                   name="university_name" 
+                                   class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                   placeholder="Enter university name">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Syllabus Upload -->
+                <div class="mb-8">
+                    <h2 class="text-xl font-bold text-gray-900 mb-4 flex items-center">
+                        <span class="mr-2">📋</span> Syllabus (Optional)
+                    </h2>
+                    <div class="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-blue-500 transition-colors">
+                        <input type="file" 
+                               name="syllabus_file" 
+                               id="syllabusFile"
+                               accept=".pdf"
+                               class="hidden">
+                        <label for="syllabusFile" class="cursor-pointer">
+                            <div class="text-gray-600 mb-2">
+                                <svg class="w-12 h-12 mx-auto mb-2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                                </svg>
+                            </div>
+                            <p class="text-sm text-gray-600">
+                                Click to upload syllabus PDF (helps with topic classification)
+                            </p>
+                            <p class="text-xs text-gray-500 mt-1">
+                                Optional but recommended for better accuracy
+                            </p>
+                        </label>
+                        <div id="syllabusFileName" class="mt-2 text-sm text-green-600 hidden"></div>
+                    </div>
+                </div>
+
+                <!-- Question Papers Upload -->
+                <div class="mb-8">
+                    <h2 class="text-xl font-bold text-gray-900 mb-4 flex items-center">
+                        <span class="mr-2">📄</span> Question Papers <span class="text-red-500 ml-1">*</span>
+                        <span id="fileCountBadge" class="ml-3 hidden bg-blue-100 text-blue-800 text-xs font-semibold px-2.5 py-0.5 rounded-full"></span>
+                    </h2>
+                    <div id="dropZone" class="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-blue-500 transition-colors cursor-pointer">
+                        <input type="file" 
+                               name="files" 
+                               id="questionPapers"
+                               accept=".pdf"
+                               multiple
+                               class="hidden">
+                        <label for="questionPapers" class="cursor-pointer block">
+                            <div class="text-gray-600">
+                                <svg class="w-16 h-16 mx-auto mb-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                                </svg>
+                            </div>
+                            <p class="text-lg font-semibold text-gray-700 mb-2">
+                                Drop PDF files here or click to browse
+                            </p>
+                            <p class="text-sm text-gray-500">
+                                Select multiple files or click again to add more • Max 50MB per file
+                            </p>
+                            <p class="text-xs text-gray-400 mt-2">
+                                Year auto-detected from filename (e.g., 2023, S6_2022)
+                            </p>
+                        </label>
+                        <!-- File list rendered here -->
+                        <div id="fileList" class="mt-4 text-left hidden">
+                            <div class="flex items-center justify-between mb-2">
+                                <p class="text-sm font-medium text-gray-700">Selected files:</p>
+                                <button type="button" id="clearAllBtn"
+                                    class="text-xs text-red-500 hover:text-red-700 underline">
+                                    Clear all
+                                </button>
+                            </div>
+                            <ul id="fileNames" class="space-y-2"></ul>
+                        </div>
+                    </div>
+                    <p class="text-xs text-gray-400 mt-2">💡 You can click the zone multiple times to keep adding files.</p>
+                </div>
+
+                <!-- Submit Button -->
+                <div class="flex items-center justify-between pt-6">
+                    <div class="text-sm text-gray-500">
+                        <span class="text-red-500">*</span> Required fields
+                    </div>
+                    <button type="submit" 
+                            id="submitBtn"
+                            class="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-8 py-3 rounded-lg font-semibold shadow-lg hover:shadow-xl transition-all duration-200 flex items-center">
+                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                        </svg>
+                        Upload & Analyze
+                    </button>
+                </div>
+
+                <!-- Progress Indicator -->
+                <div id="uploadProgress" class="hidden mt-6">
+                    <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                        <div class="flex items-center mb-2">
+                            <div class="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600 mr-3"></div>
+                            <span class="text-sm font-medium text-blue-900">Uploading papers...</span>
+                        </div>
+                        <div class="w-full bg-blue-200 rounded-full h-2">
+                            <div id="progressBar" class="bg-blue-600 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+
+        <!-- Info Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8">
+            <div class="bg-white rounded-xl shadow-md p-6">
+                <div class="text-3xl mb-3">🤖</div>
+                <h3 class="font-bold text-gray-900 mb-2">AI-Powered Analysis</h3>
+                <p class="text-sm text-gray-600">Semantic clustering identifies similar questions across papers</p>
+            </div>
+            <div class="bg-white rounded-xl shadow-md p-6">
+                <div class="text-3xl mb-3">🎯</div>
+                <h3 class="font-bold text-gray-900 mb-2">Priority Ranking</h3>
+                <p class="text-sm text-gray-600">4-tier system highlights most repeated questions</p>
+            </div>
+            <div class="bg-white rounded-xl shadow-md p-6">
+                <div class="text-3xl mb-3">📊</div>
+                <h3 class="font-bold text-gray-900 mb-2">Module-wise Reports</h3>
+                <p class="text-sm text-gray-600">Detailed PDF reports for each module</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+
+    // ── University type toggle ──────────────────────────────────────
+    const universityType = document.getElementById('universityType');
+    const universityNameField = document.getElementById('universityNameField');
+    universityType.addEventListener('change', function() {
+        if (this.value === 'OTHER') {
+            universityNameField.style.display = 'block';
+            universityNameField.querySelector('input').required = true;
+        } else {
+            universityNameField.style.display = 'none';
+            universityNameField.querySelector('input').required = false;
+        }
+    });
+
+    // ── Syllabus preview ────────────────────────────────────────────
+    document.getElementById('syllabusFile').addEventListener('change', function() {
+        const fileNameDiv = document.getElementById('syllabusFileName');
+        if (this.files.length > 0) {
+            fileNameDiv.textContent = '✓ ' + this.files[0].name;
+            fileNameDiv.classList.remove('hidden');
+        } else {
+            fileNameDiv.classList.add('hidden');
+        }
+    });
+
+    // ── Multi-file accumulation ─────────────────────────────────────
+    // Store files in a plain Array — avoids all DataTransfer.files
+    // reassignment bugs (browser resets input.files when value is cleared).
+    // On submit we build a FormData manually and POST via fetch.
+    let accumulatedFiles = [];   // Array<File>
+
+    const input       = document.getElementById('questionPapers');
+    const dropZone    = document.getElementById('dropZone');
+    const fileList    = document.getElementById('fileList');
+    const fileNames   = document.getElementById('fileNames');
+    const badge       = document.getElementById('fileCountBadge');
+    const clearAllBtn = document.getElementById('clearAllBtn');
+    const form        = document.getElementById('uploadForm');
+
+    function formatSize(bytes) {
+        return (bytes / 1024 / 1024).toFixed(2) + ' MB';
+    }
+
+    function renderFileList() {
+        fileNames.innerHTML = '';
+        if (accumulatedFiles.length === 0) {
+            fileList.classList.add('hidden');
+            badge.classList.add('hidden');
+            return;
+        }
+        fileList.classList.remove('hidden');
+        badge.textContent = accumulatedFiles.length + ' file' + (accumulatedFiles.length !== 1 ? 's' : '');
+        badge.classList.remove('hidden');
+
+        accumulatedFiles.forEach((file, idx) => {
+            const li = document.createElement('li');
+            li.className = 'flex items-center justify-between bg-gray-50 rounded-lg px-3 py-2 text-sm';
+            li.innerHTML = `
+                <span class="flex items-center text-gray-700 min-w-0 mr-2">
+                    <svg class="w-4 h-4 mr-2 text-green-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                    </svg>
+                    <span class="truncate">${file.name}</span>
+                    <span class="ml-2 text-gray-400 flex-shrink-0">(${formatSize(file.size)})</span>
+                </span>
+                <button type="button" data-idx="${idx}"
+                    class="remove-file flex-shrink-0 text-red-400 hover:text-red-600 ml-2" title="Remove">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                </button>`;
+            fileNames.appendChild(li);
+        });
+
+        fileNames.querySelectorAll('.remove-file').forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                accumulatedFiles.splice(parseInt(this.dataset.idx), 1);
+                renderFileList();
+            });
+        });
+    }
+
+    function addFiles(newFiles) {
+        const existingNames = new Set(accumulatedFiles.map(f => f.name));
+        let skipped = 0;
+        Array.from(newFiles).forEach(file => {
+            if (!file.name.toLowerCase().endsWith('.pdf')) {
+                alert(`"${file.name}" is not a PDF — skipped.`);
+                return;
+            }
+            if (file.size > 50 * 1024 * 1024) {
+                alert(`"${file.name}" exceeds 50 MB — skipped.`);
+                return;
+            }
+            if (existingNames.has(file.name)) { skipped++; return; }
+            accumulatedFiles.push(file);
+            existingNames.add(file.name);
+        });
+        if (skipped > 0) console.info(`${skipped} duplicate(s) skipped.`);
+        renderFileList();
+    }
+
+    // File input change — accumulate, then reset input so re-selecting works
+    input.addEventListener('change', function() {
+        addFiles(this.files);
+        this.value = '';          // safe: we keep files in accumulatedFiles array
+    });
+
+    // Clear all
+    clearAllBtn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        accumulatedFiles = [];
+        renderFileList();
+    });
+
+    // ── Drag & Drop ─────────────────────────────────────────────────
+    dropZone.addEventListener('dragover', function(e) {
+        e.preventDefault(); e.stopPropagation();
+        this.classList.add('border-blue-500', 'bg-blue-50');
+    });
+    dropZone.addEventListener('dragleave', function(e) {
+        e.preventDefault(); e.stopPropagation();
+        this.classList.remove('border-blue-500', 'bg-blue-50');
+    });
+    dropZone.addEventListener('drop', function(e) {
+        e.preventDefault(); e.stopPropagation();
+        this.classList.remove('border-blue-500', 'bg-blue-50');
+        if (e.dataTransfer && e.dataTransfer.files.length > 0) addFiles(e.dataTransfer.files);
+    });
+
+    // ── Form submission via fetch (bypasses broken input.files assignment) ──
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();   // always intercept
+
+        if (accumulatedFiles.length === 0) {
+            alert('Please select at least one PDF file.');
+            return;
+        }
+
+        const submitBtn     = document.getElementById('submitBtn');
+        const uploadProgress = document.getElementById('uploadProgress');
+        const progressBar   = document.getElementById('progressBar');
+
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<div class="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>Uploading...';
+        uploadProgress.classList.remove('hidden');
+
+        // Animate progress bar
+        let progress = 0;
+        const ticker = setInterval(() => {
+            progress = Math.min(progress + 5, 85);
+            progressBar.style.width = progress + '%';
+        }, 400);
+
+        // Build FormData from the regular form fields + our accumulated files
+        const fd = new FormData(form);   // captures CSRF, text fields, syllabus
+
+        // Remove any phantom 'files' entry the browser may have added (empty input)
+        fd.delete('files');
+
+        // Append every accumulated file under the same key the view expects
+        accumulatedFiles.forEach(file => fd.append('files', file, file.name));
+
+        fetch(form.action || window.location.href, {
+            method: 'POST',
+            body: fd,
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        })
+        .then(response => {
+            clearInterval(ticker);
+            progressBar.style.width = '100%';
+            // Django redirects on success — follow the redirect URL
+            if (response.redirected) {
+                window.location.href = response.url;
+            } else if (response.ok) {
+                // Re-render the page with any error messages from Django
+                return response.text().then(html => {
+                    document.open(); document.write(html); document.close();
+                });
+            } else {
+                throw new Error('Upload failed (' + response.status + ')');
+            }
+        })
+        .catch(err => {
+            clearInterval(ticker);
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = 'Upload & Analyze';
+            uploadProgress.classList.add('hidden');
+            alert('Upload error: ' + err.message);
+        });
+    });
+});
+</script>
+{% endblock %}
