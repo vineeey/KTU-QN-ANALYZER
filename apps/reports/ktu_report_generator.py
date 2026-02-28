@@ -121,8 +121,9 @@ class KTUModuleReportGenerator:
             spaceAfter=30,
             textColor=black
         )
+        subject_name = (self.subject.name or 'Subject').upper()
         story.append(Paragraph(
-            f"Module {data['module'].number} – DISASTER MANAGEMENT (KTU 2019 Scheme)",
+            f"Module {data['module'].number} – {subject_name} (KTU 2019 Scheme)",
             title_style
         ))
         story.append(Spacer(1, 0.5*cm))
@@ -235,12 +236,8 @@ class KTUModuleReportGenerator:
         )
         
         story.append(Paragraph(
-            f"■ Module {data['module'].number} – Repeated Questions<br/>(Prioritized List)",
+            f"Module {data['module'].number} — Repeated Question Analysis (Prioritized List)",
             section_title_style
-        ))
-        story.append(Paragraph(
-            "<i>(Highest repeated = highest priority)</i>",
-            subtitle_style
         ))
         story.append(Spacer(1, 0.5*cm))
         
@@ -295,29 +292,25 @@ class KTUModuleReportGenerator:
                         story.append(Paragraph(f'• "{hint.strip()}"', hint_style))
 
         # TOP PRIORITY
-        _render_tier('🔥 <b>TOP PRIORITY — Repeated 4+ Times</b>', data['priority']['top'])
+        _render_tier('<b>TOP PRIORITY — Highest repetition</b>', data['priority']['top'])
 
         # HIGH PRIORITY
-        _render_tier('🔥 <b>HIGH PRIORITY — Repeated 3 Times</b>', data['priority']['high'])
+        _render_tier('<b>HIGH PRIORITY — Next highest</b>', data['priority']['high'])
 
         # MEDIUM PRIORITY
-        _render_tier('⚡ <b>MEDIUM PRIORITY — Repeated 2 Times</b>', data['priority']['medium'])
+        _render_tier('<b>MEDIUM PRIORITY</b>', data['priority']['medium'])
 
         # LOW PRIORITY
         _render_tier(
-            f'✓ <b>LOW PRIORITY — Appears Only Once (But still Module {data["module"].number})</b>',
+            f'<b>LOW PRIORITY — Single occurrence</b>',
             data['priority']['low']
         )
 
         # === FINAL PRIORITIZED STUDY ORDER ===
         story.append(Spacer(1, 1*cm))
         story.append(Paragraph(
-            '📌 <b>FINAL PRIORITIZED STUDY ORDER</b><br/>(My recommended ranking)',
+            '<b>FINAL STUDY PRIORITY ORDER</b>',
             section_title_style
-        ))
-        story.append(Paragraph(
-            "<i>If you want to score high, study in THIS order:</i>",
-            subtitle_style
         ))
         story.append(Spacer(1, 0.3*cm))
         
@@ -339,7 +332,7 @@ class KTUModuleReportGenerator:
         # Study order tiers
         if data['priority']['top']:
             story.append(Paragraph(
-                "<b>Tier 1 (Most repeated — must learn first)</b>",
+                "<b>Tier 1 — Most repeated topics</b>",
                 tier_heading_style
             ))
             for i, item in enumerate(data['priority']['top'], 1):
@@ -347,7 +340,7 @@ class KTUModuleReportGenerator:
         
         if data['priority']['high']:
             story.append(Paragraph(
-                "<b>Tier 2 (Frequently repeated)</b>",
+                "<b>Tier 2 — Frequently repeated</b>",
                 tier_heading_style
             ))
             for i, item in enumerate(data['priority']['high'], 1):
@@ -355,7 +348,7 @@ class KTUModuleReportGenerator:
         
         if data['priority']['medium']:
             story.append(Paragraph(
-                "<b>Tier 3 (Moderately repeated)</b>",
+                "<b>Tier 3 — Moderately repeated</b>",
                 tier_heading_style
             ))
             for i, item in enumerate(data['priority']['medium'], 1):
@@ -363,7 +356,7 @@ class KTUModuleReportGenerator:
         
         if data['priority']['low']:
             story.append(Paragraph(
-                "<b>Tier 4 (One-time but possible)</b>",
+                "<b>Tier 4 — Single appearance</b>",
                 tier_heading_style
             ))
             for i, item in enumerate(data['priority']['low'], 1):
@@ -535,12 +528,12 @@ class KTUModuleReportGenerator:
 
         # ── Compute year frequency per group ───────────────────────────────
         def _get_year(q) -> Optional[str]:
+            if q.paper and q.paper.exam_type:
+                return q.paper.exam_type
             if q.years_appeared:
                 return q.years_appeared[0] if isinstance(q.years_appeared, list) else str(q.years_appeared)
             if q.paper and q.paper.year:
                 return str(q.paper.year)
-            if q.paper and q.paper.exam_type:
-                return q.paper.exam_type
             return None
 
         group_data = []
